@@ -139,7 +139,7 @@ git reset HEAD~1        # 한 단계 되돌리기
 git reset --hard o/main # 원격 브랜치 상태로 강제 초기화
 ```
 
-> ⚠️ 원격 저장소에 push된 브랜치에는 사용하지 마세요.
+> 원격 저장소에 push된 브랜치에는 사용하지 마세요.
 
 ### git revert (공유 브랜치용)
 
@@ -313,5 +313,4 @@ git pull origin main:side
 ---
 
 <img width="1581" height="1253" alt="image" src="https://github.com/user-attachments/assets/6ae39df0-6d90-49fb-9804-d1d1f495e564" />
-![image](https://github.com/user-attachments/assets/d854e976-6c4c-4c7a-b49c-47768a1b2354)
-
+https://cdn.discordapp.com/attachments/1265900286422159474/1493608867118972998/image.png?ex=69df9727&is=69de45a7&hm=0adef78b1e13c421b41a58305a1862f61af5289cb811cf4701cba8958f8ce6dd&
