@@ -312,6 +312,6 @@ git pull origin main:side
 
 ---
 
-## 참고
+<img width="1581" height="1253" alt="image" src="https://github.com/user-attachments/assets/6ae39df0-6d90-49fb-9804-d1d1f495e564" />
+![image](https://github.com/user-attachments/assets/d854e976-6c4c-4c7a-b49c-47768a1b2354)
 
-- [Learn Git Branching](https://learngitbranching.js.org/) — 직접 체험해볼 수 있는 인터랙티브 Git 튜토리얼
