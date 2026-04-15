@@ -11,306 +11,217 @@ tags: [git, branch, rebase, cherry-pick, remote]
 
 ---
 
+
 ## 목차
 
-1. [기본 커밋 & 브랜치](#1-기본-커밋--브랜치)
-2. [머지 & 리베이스](#2-머지--리베이스)
-3. [HEAD & 상대적 참조](#3-head--상대적-참조)
-4. [작업 되돌리기](#4-작업-되돌리기)
-5. [커밋 조작하기](#5-커밋-조작하기)
-6. [태그 & Describe](#6-태그--describe)
-7. [리모트 기초](#7-리모트-기초)
-8. [리모트 심화](#8-리모트-심화)
+1. [커밋과 히스토리](#1-커밋과-히스토리)
+2. [브랜치](#2-브랜치)
+3. [병합 — merge](#3-병합--merge)
+4. [리베이스 — rebase](#4-리베이스--rebase)
+5. [HEAD와 상대 참조](#5-head와-상대-참조)
+6. [히스토리 수정 — reset, revert, cherry-pick](#6-히스토리-수정--reset-revert-cherry-pick)
+7. [원격 저장소](#7-원격-저장소)
+8. [고급 명령어](#8-고급-명령어)
 
 ---
 
-## 1. 기본 커밋 & 브랜치
+## 1. 커밋과 히스토리
 
-### git commit
-
-현재 변경사항을 스냅샷으로 저장합니다.
+Git의 가장 기본 단위는 **커밋(commit)**입니다. 커밋은 프로젝트의 스냅샷을 저장하며, 각 커밋은 고유한 해시값(SHA-1)을 가집니다. 커밋은 이전 커밋을 가리키는 포인터를 포함하고, 이 연결이 쌓여 히스토리 트리가 만들어집니다.
 
 ```bash
-git commit
-git commit -m "커밋 메시지"
-git commit --amend   # 가장 최근 커밋 수정
-```
+# 변경사항을 스테이징하고 커밋
+git add .
+git commit -m "메시지"
 
-### git branch
-
-브랜치는 특정 커밋을 가리키는 포인터입니다.
-
-```bash
-git branch 브랜치명          # 브랜치 생성
-git branch -f main HEAD~3   # 브랜치를 강제로 특정 커밋으로 이동
-git branch -d 브랜치명       # 브랜치 삭제
-```
-
-### git checkout / git switch
-
-브랜치 또는 커밋으로 이동합니다.
-
-```bash
-git checkout 브랜치명
-git checkout -b 브랜치명     # 브랜치 생성 + 이동 (한 번에)
-git checkout C4             # 특정 커밋으로 HEAD 이동 (detached HEAD)
+# add와 commit을 한 번에 (이미 추적 중인 파일만)
+git commit -am "메시지"
 ```
 
 ---
 
-## 2. 머지 & 리베이스
+## 2. 브랜치
 
-### git merge
+브랜치는 특정 커밋을 가리키는 **가벼운 포인터**입니다. 새 브랜치를 만들어도 실제 파일이 복사되지 않기 때문에 생성 비용이 거의 없습니다.
 
-두 브랜치의 작업을 하나의 커밋으로 합칩니다.
-
-```bash
-git merge 브랜치명
-```
-
-```bash
-# 예시
-git checkout main
-git merge bugFix   # bugFix를 main에 머지
-```
-
-### git rebase
-
-커밋들을 복사해서 다른 위치에 붙여넣습니다. 히스토리가 깔끔해집니다.
+| 명령어 | 설명 |
+|---|---|
+| `git branch 이름` | 새 브랜치 생성 |
+| `git switch 이름` | 브랜치 이동 (최신 문법) |
+| `git checkout -b 이름` | 생성 + 이동을 한 번에 |
+| `git branch -d 이름` | 브랜치 삭제 |
 
 ```bash
-git rebase main          # 현재 브랜치를 main 위로 rebase
-git rebase main bugFix   # bugFix를 main 위로 rebase (이동 후 rebase)
-```
+# 현재 브랜치 목록 확인
+git branch
 
-### git rebase -i (인터랙티브 리베이스)
-
-커밋 순서 변경, 삭제, 수정이 가능합니다.
-
-```bash
-git rebase -i HEAD~3     # 최근 3개 커밋을 대화형으로 편집
-```
-
-인터랙티브 창에서 사용할 수 있는 옵션입니다.
-
-- `pick` — 커밋 유지
-- `drop` — 커밋 삭제
-- 순서를 바꾸면 커밋 순서가 재배치됨
-
----
-
-## 3. HEAD & 상대적 참조
-
-**HEAD**는 현재 작업 위치를 가리키는 포인터입니다.
-
-### ^ 연산자 (한 칸 위)
-
-```bash
-git checkout HEAD^      # 부모 커밋으로 이동
-git checkout HEAD^^     # 두 칸 위로 이동
-git checkout main^      # main의 부모 커밋
-git checkout HEAD^2     # 머지 커밋에서 두 번째 부모 선택
-```
-
-### ~ 연산자 (여러 칸 위)
-
-```bash
-git checkout HEAD~3          # 3칸 위로 이동
-git branch -f main HEAD~3    # main을 3칸 위로 강제 이동
-```
-
-### 체이닝 활용
-
-```bash
-git checkout HEAD~^2~
-git branch bugWork main^^2^
+# 생성과 동시에 이동
+git switch -c feature/login
 ```
 
 ---
 
-## 4. 작업 되돌리기
+## 3. 병합 — merge
 
-### git reset (로컬 전용)
-
-브랜치를 이전 커밋으로 되돌립니다. 히스토리를 덮어씁니다.
+두 브랜치의 작업을 합칩니다. `merge`는 두 브랜치의 공통 조상을 기준으로 새로운 **병합 커밋**을 만듭니다.
 
 ```bash
-git reset HEAD~1        # 한 단계 되돌리기
-git reset --hard o/main # 원격 브랜치 상태로 강제 초기화
+# main 브랜치에서 feature를 병합
+git switch main
+git merge feature/login
 ```
 
-> 원격 저장소에 push된 브랜치에는 사용하지 마세요.
+**Fast-forward란?** feature 브랜치가 main보다 앞에 있고 main에 새 커밋이 없다면, 포인터만 앞으로 이동합니다. 이 경우 별도의 병합 커밋이 생기지 않습니다.
 
-### git revert (공유 브랜치용)
+---
 
-되돌리는 내용을 담은 새 커밋을 만듭니다. 히스토리가 보존됩니다.
+## 4. 리베이스 — rebase
+
+`rebase`는 커밋들을 다른 브랜치 위로 **재배치**합니다. merge와 달리 히스토리가 일직선으로 정리됩니다.
 
 ```bash
-git revert HEAD         # 최근 커밋을 되돌리는 커밋 생성
+# feature 브랜치를 main 위로 이동
+git switch feature/login
+git rebase main
+```
+
+> **주의:** 이미 원격에 푸시한 커밋은 rebase하지 마세요. 커밋 해시가 바뀌어 협업자와 충돌이 발생합니다.
+
+---
+
+## 5. HEAD와 상대 참조
+
+HEAD는 현재 체크아웃된 위치를 가리키는 포인터입니다. 보통 브랜치를 가리키고, 브랜치는 커밋을 가리킵니다.
+
+| 표현 | 의미 |
+|---|---|
+| `HEAD~1` | 한 단계 이전 커밋 |
+| `HEAD~3` | 세 단계 이전 커밋 |
+| `HEAD^` | 첫 번째 부모 커밋 |
+| `HEAD^2` | 두 번째 부모 (병합 커밋의 경우) |
+
+```bash
+# 특정 커밋으로 HEAD만 이동 (detached HEAD 상태)
+git checkout abc1234
+
+# 두 단계 뒤로
+git checkout HEAD~2
 ```
 
 ---
 
-## 5. 커밋 조작하기
+## 6. 히스토리 수정 — reset, revert, cherry-pick
+
+### git reset
+
+브랜치 포인터를 과거로 되돌립니다. 로컬 작업에서만 사용하는 것이 안전합니다.
+
+```bash
+git reset HEAD~1          # 커밋 취소, 변경사항은 유지 (--mixed, 기본값)
+git reset --hard HEAD~1   # 커밋 + 변경사항 모두 삭제 (주의!)
+git reset --soft HEAD~1   # 커밋만 취소, 스테이징 유지
+```
+
+### git revert
+
+특정 커밋의 변경사항을 되돌리는 **새 커밋**을 만듭니다. 공유 브랜치에서도 안전하게 사용할 수 있습니다.
+
+```bash
+git revert HEAD         # 마지막 커밋을 되돌리는 커밋 생성
+git revert abc1234      # 특정 커밋을 되돌리기
+```
 
 ### git cherry-pick
 
-원하는 커밋만 골라서 현재 위치에 복사합니다.
+다른 브랜치의 특정 커밋만 골라 현재 브랜치에 적용합니다.
 
 ```bash
-git cherry-pick C2 C3 C4      # 여러 커밋 선택
-git cherry-pick C3 C4 C7      # 순서대로 복사
-```
+# 특정 커밋 하나 가져오기
+git cherry-pick abc1234
 
-### commit --amend 활용 패턴
-
-히스토리 중간 커밋을 수정하고 싶을 때 사용하는 패턴입니다.
-
-```bash
-# 1. rebase -i로 수정할 커밋을 최신으로 올리기
-git rebase -i HEAD~2
-
-# 2. 수정
-git commit --amend
-
-# 3. 다시 순서 복원
-git rebase -i HEAD~2
-
-# 4. 브랜치 이동
-git branch -f main HEAD
+# 여러 커밋 한 번에
+git cherry-pick abc1234 def5678
 ```
 
 ---
 
-## 6. 태그 & Describe
+## 7. 원격 저장소
+
+원격 저장소(remote)는 GitHub 같은 서버에 있는 저장소입니다.
+
+| 명령어 | 설명 |
+|---|---|
+| `git clone URL` | 원격 저장소를 로컬로 복사 |
+| `git fetch` | 원격 변경사항 가져오기 (병합 안 함) |
+| `git pull` | fetch + merge를 한 번에 |
+| `git push` | 로컬 커밋을 원격에 업로드 |
+
+```bash
+# 원격 브랜치 추적하며 push
+git push -u origin main
+
+# fetch 후 로그 확인, 그 다음 merge
+git fetch origin
+git log origin/main
+git merge origin/main
+
+# pull --rebase: merge 커밋 없이 깔끔하게
+git pull --rebase
+```
+
+`origin/main`은 원격 브랜치의 로컬 복사본입니다. `fetch`를 해야 최신 상태로 갱신됩니다.
+
+---
+
+## 8. 고급 명령어
+
+### git rebase -i (인터랙티브 리베이스)
+
+여러 커밋을 한꺼번에 수정, 합치기, 순서 변경할 수 있는 강력한 도구입니다.
+
+```bash
+# 최근 3개 커밋을 편집 모드로 열기
+git rebase -i HEAD~3
+```
+
+편집 화면에서 사용하는 키워드:
+
+| 키워드 | 동작 |
+|---|---|
+| `pick` | 커밋 그대로 유지 |
+| `reword` | 커밋 메시지만 수정 |
+| `squash` | 이전 커밋에 합치기 |
+| `drop` | 커밋 삭제 |
 
 ### git tag
 
-특정 커밋에 영구적인 이름을 붙입니다.
+특정 커밋에 버전 번호 같은 영구적인 이름을 붙입니다.
 
 ```bash
-git tag v1.0          # 현재 HEAD에 태그
-git tag v0 C1         # 특정 커밋에 태그
+git tag v1.0.0              # 현재 커밋에 태그
+git tag v1.0.0 abc1234      # 특정 커밋에 태그
+git push origin --tags      # 태그를 원격에 push
 ```
 
 ### git describe
 
-가장 가까운 태그를 기준으로 현재 위치를 설명합니다.
+가장 가까운 태그를 기준으로 현재 위치를 사람이 읽기 좋은 형태로 보여줍니다.
 
 ```bash
-git describe main     # 출력: v1_2_gC3 (태그_거리_커밋해시)
 git describe HEAD
+# 출력 예: v1.0.0-3-gabc1234
+# v1.0.0 태그에서 3커밋 위, 해시 abc1234
 ```
 
----
+### git stash
 
-## 7. 리모트 기초
-
-### git clone
-
-원격 저장소를 로컬로 복사합니다.
+커밋하지 않은 변경사항을 임시로 저장합니다. 브랜치를 급하게 바꿔야 할 때 유용합니다.
 
 ```bash
-git clone
+git stash          # 현재 작업 임시 저장
+git stash pop      # 저장한 작업 복원
+git stash list     # 저장 목록 확인
 ```
-
-### git fetch
-
-원격 변경사항을 로컬로 가져옵니다. merge는 하지 않습니다.
-
-```bash
-git fetch             # 모든 원격 변경사항 가져오기
-git fetch origin main # 특정 브랜치만 가져오기
-```
-
-### git pull
-
-fetch + merge를 한 번에 실행합니다.
-
-```bash
-git pull
-git pull --rebase     # fetch + rebase (히스토리 깔끔)
-```
-
-### git push
-
-로컬 커밋을 원격에 업로드합니다.
-
-```bash
-git push
-git push origin main
-```
-
-### 엇갈린 히스토리 해결 패턴
-
-```bash
-git pull --rebase
-git push
-```
-
-### 잠긴 main 우회 패턴
-
-```bash
-git reset --hard o/main
-git checkout -b feature C2
-git push
-```
-
----
-
-## 8. 리모트 심화
-
-### push/fetch refspec (source:destination)
-
-```bash
-# push: 로컬 source → 원격 destination
-git push origin foo:main
-git push origin main~1:foo
-
-# fetch: 원격 source → 로컬 destination
-git fetch origin main~1:foo
-git fetch origin foo:main
-```
-
-### 빈 source — 삭제 & 생성
-
-```bash
-git push origin :foo    # 원격 foo 브랜치 삭제
-git fetch origin :bar   # 로컬 bar 브랜치 생성
-```
-
-### 트래킹 브랜치 설정
-
-```bash
-# 방법 1: 브랜치 생성 시 트래킹 지정
-git checkout -b side o/main
-
-# 방법 2: 기존 브랜치에 트래킹 설정
-git branch -u o/main side
-```
-
-### pull 인자
-
-```bash
-git pull origin bar:foo
-git pull origin main:side
-```
-
----
-
-## 자주 쓰는 패턴 모음
-
-| 상황 | 명령어 |
-|------|--------|
-| 브랜치 만들고 이동 | `git checkout -b 브랜치명` |
-| 원격 최신 반영 후 push | `git pull --rebase && git push` |
-| 특정 커밋만 가져오기 | `git cherry-pick C2 C3` |
-| 커밋 순서 재배치 | `git rebase -i HEAD~N` |
-| 브랜치 강제 이동 | `git branch -f main HEAD~3` |
-| 원격 브랜치 추적 설정 | `git checkout -b 브랜치명 o/main` |
-| 원격 브랜치 삭제 | `git push origin :브랜치명` |
-
----
 
 <img width="1581" height="1253" alt="image" src="https://github.com/user-attachments/assets/6ae39df0-6d90-49fb-9804-d1d1f495e564" />
 https://cdn.discordapp.com/attachments/1265900286422159474/1493608867118972998/image.png?ex=69df9727&is=69de45a7&hm=0adef78b1e13c421b41a58305a1862f61af5289cb811cf4701cba8958f8ce6dd&
