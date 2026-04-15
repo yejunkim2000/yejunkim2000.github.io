@@ -224,4 +224,5 @@ git stash list     # 저장 목록 확인
 ```
 
 <img width="1581" height="1253" alt="image" src="https://github.com/user-attachments/assets/6ae39df0-6d90-49fb-9804-d1d1f495e564" />
-https://cdn.discordapp.com/attachments/1265900286422159474/1493608867118972998/image.png?ex=69df9727&is=69de45a7&hm=0adef78b1e13c421b41a58305a1862f61af5289cb811cf4701cba8958f8ce6dd&
+<img width="1448" height="760" alt="스크린샷 2026-04-14 224814" src="https://github.com/user-attachments/assets/daf34eac-f591-4311-b807-f600b1bfe9cc" />
+
