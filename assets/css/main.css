@@ -430,3 +430,176 @@ footer a:hover { color: var(--text-secondary); }
   nav { padding: 0 1rem; }
   .hero, .section { padding-left: 1rem; padding-right: 1rem; }
 }
+/* ── 전체 콘텐츠 마진 ── */
+.post-layout {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 3rem 3rem 6rem;  /* 좌우 패딩 늘림 */
+}
+
+@media (max-width: 640px) {
+  .post-layout {
+    padding: 2rem 1.5rem 4rem;
+  }
+}
+
+/* ── 코드 블록 스타일 ── */
+.post-body pre {
+  background: #0a0c10;
+  border: 1px solid #2a3250;
+  border-left: 3px solid var(--accent-teal);
+  border-radius: 8px;
+  padding: 1.5rem 1.75rem;
+  overflow-x: auto;
+  margin: 1.75rem 0;
+  position: relative;
+}
+
+/* 언어 라벨 */
+.post-body pre[class*="language-"]::before {
+  content: attr(class);
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.post-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-primary);
+}
+
+/* 인라인 코드 */
+.post-body code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: rgba(79, 247, 200, 0.08);
+  border: 1px solid rgba(79, 247, 200, 0.2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--accent-teal);
+}
+
+/* ── 문단 간격 ── */
+.post-body p {
+  margin-bottom: 1.5rem;
+  line-height: 1.85;
+  color: var(--text-secondary);
+}
+
+/* ── 헤딩 간격 ── */
+.post-body h2 {
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 3rem 0 1.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.post-body h3 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 2.25rem 0 0.85rem;
+}
+
+/* ── 표 스타일 ── */
+.post-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.75rem 0;
+  font-size: 14px;
+}
+
+.post-body th {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: rgba(42, 50, 80, 0.3);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-bright);
+  text-align: left;
+}
+
+.post-body td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+
+.post-body tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ── 인용 블록 ── */
+.post-body blockquote {
+  border-left: 2px solid var(--accent-teal);
+  background: rgba(79, 247, 200, 0.04);
+  padding: 1rem 1.25rem;
+  margin: 1.75rem 0;
+  border-radius: 0 6px 6px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ── 목록 스타일 ── */
+.post-body ul,
+.post-body ol {
+  padding-left: 1.5rem;
+  margin: 1rem 0 1.5rem;
+  color: var(--text-secondary);
+}
+
+.post-body li {
+  margin-bottom: 0.5rem;
+  line-height: 1.75;
+}
+
+.post-body li::marker {
+  color: var(--accent-teal);
+}
+
+/* ── 구분선 ── */
+.post-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+
+/* ── 섹션 헤더 좌우 여백 개선 ── */
+.section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 3rem 4rem;
+}
+
+@media (max-width: 640px) {
+  .section {
+    padding: 1.5rem 1.5rem 3rem;
+  }
+}
+
+/* ── hero 좌우 여백 ── */
+.hero {
+  padding: 6rem 3rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 3rem 1.5rem 2rem;
+  }
+}
