@@ -63,7 +63,7 @@ tags: [Ethernaut, Wargame, Solidity, 스마트컨트랙트, 블록체인보안]
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐ |
+| **난이도** | * |
 | **핵심 개념** | 기본 컨트랙트 상호작용 |
 | **목표** | `authenticate` 함수에 올바른 비밀번호 입력 |
 
@@ -94,7 +94,7 @@ await contract.authenticate("ethernaut")
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐ |
+| **난이도** | * |
 | **핵심 개념** | `receive()` fallback 함수, owner 탈취 |
 | **목표** | owner가 되어 잔액을 전부 drain |
 
@@ -135,7 +135,7 @@ await contract.withdraw()
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐ |
+| **난이도** | * |
 | **핵심 개념** | 오타 생성자, Solidity 0.6 이전 생성자 |
 | **목표** | owner가 되기 |
 
@@ -171,7 +171,7 @@ await contract.owner() // → 내 주소 확인
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | 블록체인 난수, 온체인 예측 공격 |
 | **목표** | 동전 던지기 10번 연속 맞추기 |
 
@@ -224,7 +224,7 @@ for (let i = 0; i < 10; i++) {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐ |
+| **난이도** | * |
 | **핵심 개념** | `tx.origin` vs `msg.sender` |
 | **목표** | owner 변경 |
 
@@ -268,7 +268,7 @@ await attackContract.attack(contract.address, player)
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | 정수 언더플로우 (Solidity < 0.8) |
 | **목표** | 토큰 잔액 폭증 |
 
@@ -304,7 +304,7 @@ await contract.balanceOf(player) // → 매우 큰 숫자
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | `delegatecall`, fallback 함수 |
 | **목표** | Delegation 컨트랙트의 owner 탈취 |
 
@@ -330,7 +330,7 @@ await contract.owner() // → 내 주소
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | `selfdestruct`로 강제 ETH 전송 |
 | **목표** | 컨트랙트 잔액 > 0 만들기 |
 
@@ -365,7 +365,7 @@ await forceAttack.attack(contract.address, { value: 1 })
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | 블록체인 스토리지 투명성, `private` 변수 |
 | **목표** | `locked = false` 만들기 |
 
@@ -398,7 +398,7 @@ await contract.locked() // → false
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | ETH 전송 실패 DoS, pull over push |
 | **목표** | 영원히 왕좌 유지 |
 
@@ -428,7 +428,7 @@ contract KingAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | 재진입 공격 (Reentrancy) |
 | **목표** | 컨트랙트 ETH 전부 drain |
 
@@ -484,7 +484,7 @@ contract ReentranceAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | 인터페이스 신뢰 취약점 |
 | **목표** | `top = true` 만들기 |
 
@@ -511,7 +511,7 @@ contract ElevatorAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | 스토리지 레이아웃, 타입 캐스팅 |
 | **목표** | `locked = false` 만들기 |
 
@@ -535,7 +535,7 @@ await contract.unlock(key)
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | gas 조정, bytes 마스킹, tx.origin |
 | **목표** | 3개의 modifier 동시 통과 |
 
@@ -561,7 +561,7 @@ contract GatekeeperOneAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | 생성자 내 `extcodesize`, XOR 역산 |
 | **목표** | `enter()` 통과 |
 
@@ -585,7 +585,7 @@ contract GatekeeperTwoAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | ERC20 `transferFrom`, approval 우회 |
 | **목표** | 토큰 잔액을 0으로 만들기 |
 
@@ -603,7 +603,7 @@ await contract.transferFrom(player, "0x0000000000000000000000000000000000000001"
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | `delegatecall` 스토리지 충돌 |
 | **목표** | owner 탈취 |
 
@@ -636,7 +636,7 @@ await contract.setFirstTime(BigInt(player))
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | 컨트랙트 주소 파생 공식 |
 | **목표** | 분실된 컨트랙트 찾아서 ETH 회수 |
 
@@ -657,7 +657,7 @@ await simpleToken.destroy(player)
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | EVM 바이트코드 직접 작성 |
 | **목표** | 42를 반환하는 최대 10 opcode짜리 컨트랙트 |
 
@@ -687,7 +687,7 @@ await contract.setSolver(tx.contractAddress)
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | 동적 배열 언더플로우, 전체 스토리지 접근 |
 | **목표** | owner 탈취 |
 
@@ -710,7 +710,7 @@ await contract.revise(slot0Index, paddedPlayer)
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | 가스 고갈 DoS |
 | **목표** | `withdraw()` 영구 차단 |
 
@@ -735,7 +735,7 @@ await contract.setWithdrawPartner(attackContract.address)
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | `view` 함수의 상태 의존 |
 | **목표** | 가격을 100 미만으로 구입 |
 
@@ -760,7 +760,7 @@ contract ShopAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | AMM 가격 조작 |
 | **목표** | DEX 토큰 한 종류 완전 drain |
 
@@ -782,7 +782,7 @@ for (let i = 0; i < 5; i++) {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | 토큰 주소 검증 부재 |
 | **목표** | 두 종류 토큰 모두 drain |
 
@@ -799,7 +799,7 @@ for (let i = 0; i < 5; i++) {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐⭐ |
+| **난이도** | ***** |
 | **핵심 개념** | Proxy 스토리지 충돌, multicall 잔액 조작 |
 | **목표** | proxy admin 탈취 |
 
@@ -825,7 +825,7 @@ await wallet.setMaxBalance(BigInt(player))  // proxy.admin = player
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | UUPS 미초기화 구현체, selfdestruct |
 | **목표** | 구현 컨트랙트 파괴 |
 
@@ -850,7 +850,7 @@ await engine.upgradeToAndCall(
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | Forta 봇, delegatecall 추적 |
 | **목표** | DetectionBot 구현 |
 
@@ -873,7 +873,7 @@ contract DetectionBot is IDetectionBot {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | 커스텀 에러 식별, 분기 유도 |
 | **목표** | 지갑 잔액 전부 획득 |
 
@@ -899,7 +899,7 @@ contract GoodSamaritanAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | 다중 조건 우회, 블록 타임스탬프 |
 | **목표** | entrant 등록 |
 
@@ -924,7 +924,7 @@ contract GatekeeperThreeAttack {
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | calldata 오프셋 조작 |
 | **목표** | 스위치를 ON으로 만들기 |
 
@@ -952,7 +952,7 @@ await signer.sendTransaction({ to: contract.address, data })
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐ |
+| **난이도** | ** |
 | **핵심 개념** | calldata 타입 범위 초과 |
 | **목표** | `commander` 되기 |
 
@@ -971,7 +971,7 @@ await contract.claimLeadership()
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐ |
+| **난이도** | *** |
 | **핵심 개념** | ETH/WETH 회계 불일치 |
 | **목표** | 컨트랙트 ETH drain, 자신의 staked 잔액 유지 |
 
@@ -990,7 +990,7 @@ await contract.claimLeadership()
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | ECDSA 서명 가변성 (s → n-s) |
 | **목표** | controller 변경 |
 
@@ -1010,7 +1010,7 @@ await contract.changeController(28, "0x<r>", "0x" + newS, ethers.constants.Addre
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐⭐ |
+| **난이도** | ***** |
 | **핵심 개념** | ECDSA k 재사용 → 개인키 복구 (PS3 취약점) |
 | **목표** | 컨트랙트 잔액 drain |
 
@@ -1084,7 +1084,7 @@ await contract.withdraw()
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | ECDSA 서명 가변성으로 서명 재사용 |
 | **목표** | totalSupply > 100 ether |
 
@@ -1126,7 +1126,7 @@ await contract.createNewTokensFromOwnerSignature(malleableSig, receiver, amount,
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | XOR 저장 취약점, NEXT_ID 필드 오염 |
 | **목표** | 검증자의 Goat 저장을 다른 값으로 만들기 |
 
@@ -1169,7 +1169,7 @@ await contract.setAnimalAndSpin("Pidgeon")
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐⭐ |
+| **난이도** | ***** |
 | **핵심 개념** | ERC721 콜백 재진입 + EIP-7702 |
 | **목표** | 플레이어 NFT 잔액 > 1 |
 
@@ -1228,7 +1228,7 @@ await contract.mintNFTEOA()
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐⭐ |
+| **난이도** | ***** |
 | **핵심 개념** | ECDSA 서명 위조 (퍼블릭키만으로) |
 | **목표** | Alice 잔액을 0으로 만들기 |
 
@@ -1282,7 +1282,7 @@ await contract.transferFrom(ALICE, player, ethers.utils.parseEther("10"))
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐ |
+| **난이도** | **** |
 | **핵심 개념** | withdrawAll 재진입 공격 |
 | **목표** | isBettor(player) == true |
 
@@ -1341,7 +1341,7 @@ await attackInst.attack({ value: ethers.utils.parseEther("0.001") })
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐⭐ |
+| **난이도** | ***** |
 | **핵심 개념** | off-by-one 루프, 실행 선행/검증 후행, L2 Merkle 증명 |
 | **목표** | totalSupply() > 0 |
 
@@ -1379,7 +1379,7 @@ await contract.executeMessage(player, 1, [], [], 0, proofs, 0)
 
 | 항목 | 내용 |
 |------|------|
-| **난이도** | ⭐⭐⭐⭐⭐ |
+| **난이도** | ***** |
 | **핵심 개념** | EIP-7702 위임, 바이트코드 주소 임베딩, 트랜지언트 스토리지 |
 | **목표** | 최대 캐시백 달성 + SuperCashbackNFT 2개 + EIP-7702 코드 보유 |
 
@@ -1459,44 +1459,44 @@ await provider.send("eth_sendTransaction", [{
 
 | Level | 이름 | 핵심 취약점 | 난이도 |
 |-------|------|-------------|--------|
-| 0 | Hello Ethernaut | 기본 함수 호출 | ⭐ |
-| 1 | Fallback | receive() fallback owner 탈취 | ⭐ |
-| 2 | Fallout | 오타 생성자 | ⭐ |
-| 3 | CoinFlip | 온체인 난수 예측 | ⭐⭐ |
-| 4 | Telephone | tx.origin vs msg.sender | ⭐ |
-| 5 | Token | 정수 언더플로우 | ⭐⭐ |
-| 6 | Delegation | delegatecall fallback | ⭐⭐ |
-| 7 | Force | selfdestruct 강제 전송 | ⭐⭐ |
-| 8 | Vault | private 스토리지 직접 읽기 | ⭐⭐ |
-| 9 | King | ETH 수신 거부 DoS | ⭐⭐⭐ |
-| 10 | Re-entrancy | 재진입 공격 | ⭐⭐⭐ |
-| 11 | Elevator | view 함수 상태 의존 | ⭐⭐ |
-| 12 | Privacy | 스토리지 레이아웃 분석 | ⭐⭐⭐ |
-| 13 | Gatekeeper One | gas 조정 + bytes 마스킹 | ⭐⭐⭐⭐ |
-| 14 | Gatekeeper Two | constructor extcodesize | ⭐⭐⭐ |
-| 15 | Naught Coin | ERC20 transferFrom 우회 | ⭐⭐ |
-| 16 | Preservation | delegatecall 스토리지 충돌 | ⭐⭐⭐⭐ |
-| 17 | Recovery | 컨트랙트 주소 파생 | ⭐⭐ |
-| 18 | Magic Number | 순수 EVM 바이트코드 | ⭐⭐⭐ |
-| 19 | Alien Codex | 배열 언더플로우 전체 스토리지 | ⭐⭐⭐⭐ |
-| 20 | Denial | 가스 고갈 DoS | ⭐⭐⭐ |
-| 21 | Shop | view 함수 두 번 다른 값 | ⭐⭐⭐ |
-| 22 | Dex | AMM 가격 조작 | ⭐⭐⭐ |
-| 23 | Dex Two | 가짜 토큰 swap | ⭐⭐⭐ |
-| 24 | Puzzle Wallet | Proxy 스토리지 충돌 + multicall | ⭐⭐⭐⭐⭐ |
-| 25 | Motorbike | UUPS 미초기화 구현체 | ⭐⭐⭐⭐ |
-| 26 | Double Entry Point | Forta DetectionBot 구현 | ⭐⭐⭐ |
-| 27 | Good Samaritan | 커스텀 에러 분기 유도 | ⭐⭐⭐ |
-| 28 | Gatekeeper Three | 다중 조건 우회 | ⭐⭐⭐ |
-| 29 | Switch | calldata 오프셋 조작 | ⭐⭐⭐⭐ |
-| 30 | Higher Order | calldata 타입 범위 초과 | ⭐⭐ |
-| 31 | Stake | ETH/WETH 회계 불일치 | ⭐⭐⭐ |
-| 32 | Impersonator | ECDSA 서명 가변성 (s→n-s) | ⭐⭐⭐⭐ |
-| 33 | ImpersonatorTwo | ECDSA k 재사용 → 개인키 복구 | ⭐⭐⭐⭐⭐ |
-| 34 | Forger | ECDSA 가변성으로 서명 재사용 | ⭐⭐⭐⭐ |
-| 35 | MagicAnimalCarousel | XOR 저장 + NEXT_ID 오염 | ⭐⭐⭐⭐ |
-| 36 | UniqueNFT | ERC721 콜백 재진입 + EIP-7702 | ⭐⭐⭐⭐⭐ |
-| 37 | EllipticToken | 퍼블릭키만으로 서명 위조 | ⭐⭐⭐⭐⭐ |
-| 38 | BetHouse | withdrawAll 재진입 | ⭐⭐⭐⭐ |
-| 39 | NotOptimisticPortal | off-by-one + 실행 선행/검증 후행 | ⭐⭐⭐⭐⭐ |
-| 40 | Cashback | EIP-7702 + 바이트코드 주소 임베딩 | ⭐⭐⭐⭐⭐ |
+| 0 | Hello Ethernaut | 기본 함수 호출 | * |
+| 1 | Fallback | receive() fallback owner 탈취 | * |
+| 2 | Fallout | 오타 생성자 | * |
+| 3 | CoinFlip | 온체인 난수 예측 | ** |
+| 4 | Telephone | tx.origin vs msg.sender | * |
+| 5 | Token | 정수 언더플로우 | ** |
+| 6 | Delegation | delegatecall fallback | ** |
+| 7 | Force | selfdestruct 강제 전송 | ** |
+| 8 | Vault | private 스토리지 직접 읽기 | ** |
+| 9 | King | ETH 수신 거부 DoS | *** |
+| 10 | Re-entrancy | 재진입 공격 | *** |
+| 11 | Elevator | view 함수 상태 의존 | ** |
+| 12 | Privacy | 스토리지 레이아웃 분석 | *** |
+| 13 | Gatekeeper One | gas 조정 + bytes 마스킹 | **** |
+| 14 | Gatekeeper Two | constructor extcodesize | *** |
+| 15 | Naught Coin | ERC20 transferFrom 우회 | ** |
+| 16 | Preservation | delegatecall 스토리지 충돌 | **** |
+| 17 | Recovery | 컨트랙트 주소 파생 | ** |
+| 18 | Magic Number | 순수 EVM 바이트코드 | *** |
+| 19 | Alien Codex | 배열 언더플로우 전체 스토리지 | **** |
+| 20 | Denial | 가스 고갈 DoS | *** |
+| 21 | Shop | view 함수 두 번 다른 값 | *** |
+| 22 | Dex | AMM 가격 조작 | *** |
+| 23 | Dex Two | 가짜 토큰 swap | *** |
+| 24 | Puzzle Wallet | Proxy 스토리지 충돌 + multicall | ***** |
+| 25 | Motorbike | UUPS 미초기화 구현체 | **** |
+| 26 | Double Entry Point | Forta DetectionBot 구현 | *** |
+| 27 | Good Samaritan | 커스텀 에러 분기 유도 | *** |
+| 28 | Gatekeeper Three | 다중 조건 우회 | *** |
+| 29 | Switch | calldata 오프셋 조작 | **** |
+| 30 | Higher Order | calldata 타입 범위 초과 | ** |
+| 31 | Stake | ETH/WETH 회계 불일치 | *** |
+| 32 | Impersonator | ECDSA 서명 가변성 (s→n-s) | **** |
+| 33 | ImpersonatorTwo | ECDSA k 재사용 → 개인키 복구 | ***** |
+| 34 | Forger | ECDSA 가변성으로 서명 재사용 | **** |
+| 35 | MagicAnimalCarousel | XOR 저장 + NEXT_ID 오염 | **** |
+| 36 | UniqueNFT | ERC721 콜백 재진입 + EIP-7702 | ***** |
+| 37 | EllipticToken | 퍼블릭키만으로 서명 위조 | ***** |
+| 38 | BetHouse | withdrawAll 재진입 | **** |
+| 39 | NotOptimisticPortal | off-by-one + 실행 선행/검증 후행 | ***** |
+| 40 | Cashback | EIP-7702 + 바이트코드 주소 임베딩 | ***** |
