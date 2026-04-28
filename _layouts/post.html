@@ -1,0 +1,36 @@
+---
+layout: default
+---
+
+{% assign color = "teal" %}
+{% if page.category == "개발" %}{% assign color = "blue" %}
+{% elsif page.category == "CTF/Wargame" %}{% assign color = "red" %}
+{% elsif page.category == "BugBounty" %}{% assign color = "amber" %}
+{% elsif page.category == "블로그/기술문서" %}{% assign color = "teal" %}
+{% elsif page.category == "논문/컨퍼런스" %}{% assign color = "purple" %}
+{% elsif page.category == "공모전/자격증" %}{% assign color = "green" %}
+{% endif %}
+
+<article class="post-layout">
+
+  <header class="post-header">
+    <a href="/category/{% if page.category == '개발' %}dev{% elsif page.category == 'CTF/Wargame' %}ctf{% elsif page.category == 'BugBounty' %}bugbounty{% elsif page.category == '블로그/기술문서' %}docs{% elsif page.category == '논문/컨퍼런스' %}research{% elsif page.category == '공모전/자격증' %}cert{% endif %}/"
+       class="post-tag tag-{{ color }}" style="text-decoration:none; display:inline-block; margin-bottom:1.25rem;">
+      {{ page.category }}
+    </a>
+    <h1 class="post-title">{{ page.title }}</h1>
+    <div class="post-meta">
+      <span>{{ page.date | date: "%Y년 %m월 %d일" }}</span>
+      {% if page.author %}<span>{{ page.author }}</span>{% endif %}
+    </div>
+  </header>
+
+  <div class="post-body">
+    {{ content }}
+  </div>
+
+  <footer class="post-footer">
+    <a href="javascript:history.back()" class="back-btn">← 목록으로 돌아가기</a>
+  </footer>
+
+</article>
