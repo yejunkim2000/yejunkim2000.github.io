@@ -8,8 +8,6 @@ tags: [Ethernaut, Wargame, Solidity, 스마트컨트랙트, 블록체인보안]
 ---
 
 > **플랫폼:** [OpenZeppelin Ethernaut](https://ethernaut.openzeppelin.com/)
-> **네트워크:** Sepolia Testnet
-> **목적:** Solidity 스마트컨트랙트 취약점 분석
 
 ---
 
