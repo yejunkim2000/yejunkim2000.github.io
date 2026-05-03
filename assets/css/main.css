@@ -12,9 +12,9 @@
   --accent-teal: #4ff7c8;
   --accent-purple: #a04ff7;
   --accent-green: #6af74f;
-  --text-primary: #e8ecf4;
-  --text-secondary: #7a8499;
-  --text-muted: #444c63;
+  --text-primary: #f0f4ff;
+  --text-secondary: #a8b4cc;
+  --text-muted: #6272a4;
   --mono: 'JetBrains Mono', monospace;
   --sans: 'Noto Sans KR', sans-serif;
 }
