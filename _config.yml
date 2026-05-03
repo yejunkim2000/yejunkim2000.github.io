@@ -55,3 +55,7 @@ categories:
     color: "green"
 
 exclude: ["sitemap.xml", "feed.xml", "LICENSE", "README.md", "Gemfile", "Gemfile.lock"]
+
+kramdown:
+  math_engine: null
+  syntax_highlighter: rouge
