@@ -198,3 +198,358 @@ nav {
 
 .cat-card[data-color="blue"]::before  { background: var(--accent-blue); }
 .cat-card[data-color="red"]::before   { background: var(--accent-red); }
+.cat-card[data-color="amber"]::before { background: var(--accent-amber); }
+.cat-card[data-color="teal"]::before  { background: var(--accent-teal); }
+.cat-card[data-color="purple"]::before { background: var(--accent-purple); }
+.cat-card[data-color="green"]::before  { background: var(--accent-green); }
+
+.cat-icon {
+  font-size: 20px;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.cat-card[data-color="blue"]   .cat-icon { color: var(--accent-blue); }
+.cat-card[data-color="red"]    .cat-icon { color: var(--accent-red); }
+.cat-card[data-color="amber"]  .cat-icon { color: var(--accent-amber); }
+.cat-card[data-color="teal"]   .cat-icon { color: var(--accent-teal); }
+.cat-card[data-color="purple"] .cat-icon { color: var(--accent-purple); }
+.cat-card[data-color="green"]  .cat-icon { color: var(--accent-green); }
+
+.cat-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.cat-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── POSTS 목록 ── */
+.posts-list { display: flex; flex-direction: column; gap: 1px; }
+
+.post-item {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.post-item:first-child { border-top: 1px solid var(--border); }
+
+.post-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* 목록에서 보이는 제목 크기 — 작게 고정 */
+.post-title {
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 400;
+  transition: color 0.2s;
+  line-height: 1.5;
+}
+
+.post-item:hover .post-title { color: var(--accent-teal); }
+
+.post-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.tag-blue   { color: var(--accent-blue);   border-color: var(--accent-blue);   background: rgba(79,142,247,0.08); }
+.tag-red    { color: var(--accent-red);    border-color: var(--accent-red);    background: rgba(247,95,79,0.08); }
+.tag-amber  { color: var(--accent-amber);  border-color: var(--accent-amber);  background: rgba(247,167,79,0.08); }
+.tag-teal   { color: var(--accent-teal);   border-color: var(--accent-teal);   background: rgba(79,247,200,0.08); }
+.tag-purple { color: var(--accent-purple); border-color: var(--accent-purple); background: rgba(160,79,247,0.08); }
+.tag-green  { color: var(--accent-green);  border-color: var(--accent-green);  background: rgba(106,247,79,0.08); }
+
+/* ── POST 글 내부 레이아웃 ── */
+.post-layout {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 3.5rem 3rem 6rem;
+}
+
+/* 글 내부 헤더 */
+.post-header {
+  margin-bottom: 3.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.post-header .post-tag {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+}
+
+/* 글 내부 제목 — 크게 */
+.post-header h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.post-meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 1.5rem;
+}
+
+/* ── POST 본문 ── */
+.post-body {
+  color: var(--text-secondary);
+  font-size: 15.5px;
+  line-height: 1.9;
+}
+
+.post-body p {
+  margin-bottom: 1.6rem;
+}
+
+.post-body h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 3.5rem 0 1.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.post-body h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 2.5rem 0 0.85rem;
+}
+
+.post-body h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 1.75rem 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--mono);
+}
+
+/* 코드 블록 */
+.post-body pre {
+  background: #080b10;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-teal);
+  border-radius: 8px;
+  padding: 1.5rem 1.75rem;
+  overflow-x: auto;
+  margin: 1.75rem 0 2rem;
+  line-height: 1.7;
+}
+
+.post-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  color: #c9d1d9;
+  font-family: var(--mono);
+}
+
+/* 인라인 코드 */
+.post-body :not(pre) > code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: rgba(79, 247, 200, 0.07);
+  border: 1px solid rgba(79, 247, 200, 0.18);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--accent-teal);
+  word-break: break-word;
+}
+
+/* 인용 블록 */
+.post-body blockquote {
+  border-left: 2px solid var(--accent-teal);
+  background: rgba(79, 247, 200, 0.04);
+  padding: 1rem 1.5rem;
+  margin: 1.75rem 0;
+  border-radius: 0 6px 6px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.post-body blockquote p { margin-bottom: 0; }
+
+/* 목록 */
+.post-body ul,
+.post-body ol {
+  padding-left: 1.75rem;
+  margin: 0.75rem 0 1.5rem;
+}
+
+.post-body li {
+  margin-bottom: 0.6rem;
+  line-height: 1.8;
+}
+
+.post-body li::marker { color: var(--accent-teal); }
+
+/* 표 */
+.post-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  font-size: 14px;
+}
+
+.post-body th {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: rgba(42, 50, 80, 0.4);
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border-bright);
+  text-align: left;
+}
+
+.post-body td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+
+.post-body tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+
+/* 구분선 */
+.post-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 3rem 0;
+}
+
+/* 링크 */
+.post-body a {
+  color: var(--accent-teal);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(79,247,200,0.3);
+  transition: border-color 0.2s;
+}
+
+.post-body a:hover { border-color: var(--accent-teal); }
+
+/* 뒤로가기 */
+.post-footer {
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.back-btn {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border: none !important;
+  transition: color 0.2s;
+}
+
+.back-btn:hover { color: var(--text-secondary); }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 2rem;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+footer a { color: var(--text-muted); }
+footer a:hover { color: var(--text-secondary); }
+
+/* ── ABOUT ── */
+.about-layout {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+
+.about-avatar {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 2px solid var(--border-bright);
+  margin-bottom: 2rem;
+  background: var(--bg-card);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 22px;
+  color: var(--accent-teal);
+}
+
+.about-name {
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.about-bio {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  max-width: 500px;
+}
+
+.skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.skill-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .post-layout { padding: 2rem 1.5rem 4rem; }
+  .hero  { padding: 3rem 1.5rem 2rem; }
+  .section { padding: 1.5rem 1.5rem 3rem; }
+}
+
+@media (max-width: 640px) {
+  .post-item { grid-template-columns: 1fr; gap: 0.5rem; }
+  .post-date { display: none; }
+  nav { padding: 0 1rem; }
+}
