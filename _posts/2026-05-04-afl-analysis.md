@@ -1,197 +1,173 @@
 ---
 layout: post
-title: "AFL 핵심 메커니즘 완전 분석 — Instrumentation, Coverage, Fork Server, Mutation"
-date: 2026-05-04
+title: "AFL 핵심 메커니즘 — afl-gcc.c, afl-as.c/h, afl-fuzz.c, technical_details.txt"
+date: 2026-05-05
 category: BugBounty
 author: yejunkim2000
-tags: [AFL, Fuzzing, 퍼징, 취약점분석, BugBounty, 보안연구]
+tags: [AFL, Fuzzing, 퍼징, 취약점분석, BugBounty, 보안연구, 소스코드분석]
 ---
 
-> **대상:** AFL (American Fuzzy Lop) 원본 — [google/AFL](https://github.com/google/AFL)
-> **분석 파일:** `afl-gcc.c`, `afl-as.c`, `afl-as.h`, `afl-fuzz.c`, `docs/technical_details.txt`
-> **예상 읽기 시간:** 약 20분
+> **분석 파일:** `afl-gcc.c`, `afl-as.c`, `afl-as.h`, `afl-fuzz.c`, `config.h`
+> **저장소:** [google/AFL](https://github.com/google/AFL)
 
 ---
 
 ## 목차
 
-1. [AFL이란 무엇인가 — 설계 철학](#1-afl이란-무엇인가--설계-철학)
-2. [Instrumentation — 계측 도구가 심어지는 과정](#2-instrumentation--계측-도구가-심어지는-과정)
-3. [Coverage — 커버리지를 측정하는 방법](#3-coverage--커버리지를-측정하는-방법)
-4. [Fork Server — 왜 빠른가](#4-fork-server--왜-빠른가)
-5. [Mutation — 입력을 어떻게 변이시키나](#5-mutation--입력을-어떻게-변이시키나)
-6. [전체 흐름 종합](#6-전체-흐름-종합)
+1. [Instrumentation — 계측 코드가 심어지는 과정](#1-instrumentation--계측-코드가-심어지는-과정)
+2. [Coverage — 커버리지 측정 방법](#2-coverage--커버리지-측정-방법)
+3. [Fork Server — exec() 오버헤드 제거](#3-fork-server--exec-오버헤드-제거)
+4. [Mutation — 입력 변이 전략](#4-mutation--입력-변이-전략)
+5. [전체 흐름 종합](#5-전체-흐름-종합)
 
 ---
 
-## 1. AFL이란 무엇인가 — 설계 철학
+## 1. Instrumentation — 계측 코드가 심어지는 과정
 
-AFL의 technical_details.txt는 첫 문장부터 인상적이다.
+**목표:** 타겟 바이너리가 실행될 때마다 어떤 경로를 밟았는지 기록하는 코드를 심는다.
 
-> "American Fuzzy Lop does its best not to focus on any singular principle of operation... The tool can be thought of as a collection of hacks that have been tested in practice."
+### 1-1. 컴파일 파이프라인
 
-즉, AFL은 특정 이론의 증명이 아니라 **실제로 효과가 있음이 검증된 기법들의 조합**이다. 설계 원칙은 단 세 가지다: **속도(speed), 신뢰성(reliability), 사용 편의성(ease of use).**
-
-AFL의 핵심 알고리즘을 한 줄로 요약하면 다음과 같다.
-
-```
-변이된 입력 → 타겟 실행 → 새 상태 전이 발견 → 큐에 추가 → 반복
-```
-
-공식 문서의 알고리즘 요약은 아래와 같다.
-
-1. 사용자가 제공한 초기 테스트케이스를 큐에 로드
-2. 큐에서 다음 입력 파일을 꺼냄
-3. 측정된 동작을 바꾸지 않는 선에서 파일을 최소 크기로 트리밍
-4. 다양한 변이 전략으로 파일을 반복 변이
-5. 변이 결과가 새로운 상태 전이를 만들면 큐에 추가
-6. 2번으로 돌아감
-
----
-
-## 2. Instrumentation — 계측 도구가 심어지는 과정
-
-AFL의 계측은 "LLVM 패스"가 아니다. 원본 AFL은 **어셈블러(assembler) 단계에서 계측을 삽입**한다. 이것이 AFL++과의 핵심 차이다.
-
-### 2-1. 컴파일 파이프라인 전체 흐름
+AFL의 계측은 LLVM 패스가 아니라 **어셈블러(assembler) 단계**에서 이루어진다.
 
 ```
 소스코드 (.c)
     ↓
-[afl-gcc / afl-clang]  ← 실제 gcc/clang을 래핑한 wrapper
+[afl-gcc]     ← gcc를 래핑한 wrapper. -B 플래그로 어셈블러를 afl-as로 교체
     ↓
-전처리 (Preprocessor) → .i 파일
+gcc           ← 소스 → 어셈블리 .s 파일 생성
     ↓
-컴파일 (Compiler) → .s 파일 (어셈블리)
+[afl-as]      ← ★ 이 단계에서 .s 파일을 파싱해 계측 코드 삽입
     ↓
-[afl-as]  ← ★ 이 단계에서 계측 코드가 삽입됨
-    ↓
-어셈블 (Assembler) → .o 파일 (오브젝트)
-    ↓
-링크 (Linker) → 최종 바이너리
+계측된 바이너리
 ```
 
-### 2-2. afl-gcc의 역할 — Wrapper
+### 1-2. afl-gcc.c — 어셈블러 교체
 
-`afl-gcc.c`를 보면, afl-gcc는 gcc 자체가 아니라 **gcc를 호출하는 래퍼(wrapper)** 다. 핵심은 `-B` 플래그다.
+`afl-gcc`의 핵심은 `-B` 플래그 하나다. gcc에게 "어셈블러를 이 경로에서 찾아라"고 지시해, 시스템 `as` 대신 `afl-as`를 끼워넣는다.
 
 ```c
-// afl-gcc.c 중 핵심 부분
+// afl-gcc.c — edit_params()
 static void edit_params(u32 argc, char** argv) {
 
-    // as_path에 afl-as가 있는 경로를 설정
+    // 어셈블러를 afl-as로 교체
     cc_params[cc_par_cnt++] = "-B";
     cc_params[cc_par_cnt++] = as_path;
-    // ...
+
+    // Clang은 내장 어셈블러를 비활성화해야 afl-as가 호출됨
+    if (clang_mode)
+        cc_params[cc_par_cnt++] = "-no-integrated-as";
+
+    // AFL 마킹 플래그
+    cc_params[cc_par_cnt++] = "-D__AFL_COMPILER=1";
+    cc_params[cc_par_cnt++] = "-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1";
 }
 ```
 
-`-B` 플래그는 gcc에게 "어셈블러(as)를 이 경로에서 찾아라"고 지시한다. 즉, 시스템의 진짜 `as` 대신 **AFL의 `afl-as`를 어셈블러로 사용**하게 만드는 것이다.
+### 1-3. afl-as.c — 어셈블리 파싱 및 계측 삽입
 
-컴파일 과정을 풀어쓰면 아래와 같다.
+`afl-as`는 gcc가 생성한 `.s` 파일을 읽으면서 **기본 블록(Basic Block)의 시작 지점**을 감지해 계측 코드를 삽입한다.
 
-```bash
-# 사용자가 입력하는 것
-CC=afl-gcc ./configure && make
+삽입 조건은 두 가지다.
 
-# 실제로 일어나는 것
-afl-gcc (= gcc -B /path/to/afl/) source.c
-    → gcc가 source.s (어셈블리) 생성
-    → afl-as가 source.s를 가로채서 계측 코드 삽입
-    → 계측된 source.o 생성
+```c
+// afl-as.c — add_instrumentation()
+
+// 조건 1: 조건부 분기 명령어 (j로 시작하되 jmp는 제외)
+if (line[1] == 'j' && line[2] != 'm' && R(100) < inst_ratio)
+    fprintf(outf, trampoline_fmt_64, R(MAP_SIZE));
+
+// 조건 2: 라벨 다음 첫 명령어 (새 기본 블록 시작)
+if (instrument_next && line[0] == '\t' && isalpha(line[1]))
+    fprintf(outf, trampoline_fmt_64, R(MAP_SIZE));
 ```
 
-### 2-3. afl-as의 역할 — 어셈블리에 계측 코드 삽입
+- `R(MAP_SIZE)`는 `random() % MAP_SIZE` — 각 기본 블록에 **컴파일 타임 랜덤 ID**를 배정한다.
+- `.data`, `.bss` 섹션 / Intel syntax 블록 / `#APP`~`#NO_APP` 인라인 어셈블리는 계측을 건너뛴다.
 
-`afl-as.c`는 진짜 어셈블러(`as`)를 호출하기 전에 `.s` 파일을 **파싱해서 계측 코드를 삽입**한다.
+### 1-4. afl-as.h — 삽입되는 어셈블리 (trampoline)
 
-삽입 타이밍은 **기본 블록(Basic Block)의 시작 지점**이다. 기본 블록이란 분기 없이 순차 실행되는 명령어들의 묶음이다.
+각 기본 블록 앞에 삽입되는 실제 어셈블리 코드다.
 
-```
-기본 블록 예시:
-
-  [블록 A]        [블록 B]        [블록 C]
-  mov eax, 1  →  cmp eax, 0  →  je [블록 D]
-  add ebx, 2     sub ecx, 1     mov edx, 5
-                                jmp [블록 E]
-```
-
-AFL은 어셈블리 파일을 읽으면서 `jmp`, `je`, `call` 같은 분기 명령어 이후 위치를 감지하고, 그 직후(= 새 기본 블록 시작)에 계측 코드를 삽입한다.
-
-`afl-as.h`에 삽입되는 실제 x86 어셈블리 코드가 정의되어 있다. 의사 코드로 표현하면 아래와 같다.
+**32비트 trampoline:**
 
 ```asm
-; 각 기본 블록 시작 지점에 삽입되는 코드
-; cur_location은 컴파일 타임에 랜덤 생성된 이 블록의 ID
-
-  mov rcx, <cur_location>          ; 현재 블록 ID를 레지스터에 로드
-  call __afl_maybe_log             ; 커버리지 기록 함수 호출
+.align 4
+leal -16(%%esp), %%esp
+movl %%edi,  0(%%esp)    ; 레지스터 4개 저장 (edi/edx/ecx/eax)
+movl %%edx,  4(%%esp)
+movl %%ecx,  8(%%esp)
+movl %%eax, 12(%%esp)
+movl $0x%08x, %%ecx      ; ← R(MAP_SIZE) 값 = 이 블록의 ID
+call __afl_maybe_log
+movl 12(%%esp), %%eax    ; 레지스터 복원
+movl  8(%%esp), %%ecx
+movl  4(%%esp), %%edx
+movl  0(%%esp), %%edi
+leal 16(%%esp), %%esp
 ```
 
-`__afl_maybe_log` 함수가 실제 비트맵을 업데이트한다. 이 함수 역시 `afl-as.h`에 인라인 어셈블리로 정의되어 있으며, 핵심 로직은 아래와 같다.
+**64비트 trampoline:**
+
+```asm
+.align 4
+leaq -(128+24)(%%rsp), %%rsp  ; 128 = x86-64 ABI 레드존, 24 = 레지스터 3개
+movq %%rdx,  0(%%rsp)         ; rdx/rcx/rax 3개만 저장
+movq %%rcx,  8(%%rsp)
+movq %%rax, 16(%%rsp)
+movq $0x%08x, %%rcx           ; 블록 ID → rcx
+call __afl_maybe_log
+movq 16(%%rsp), %%rax
+movq  8(%%rsp), %%rcx
+movq  0(%%rsp), %%rdx
+leaq (128+24)(%%rsp), %%rsp
+```
+
+> **레드존(red zone)이란?**
+> x86-64 ABI에서 `rsp` 아래 128바이트는 시그널 핸들러나 인터럽트가 건드리지 않는 영역이다. 계측 코드가 스택 포인터를 내리기 전에 이 영역을 보호해야 하기 때문에 `-(128+24)`를 빼는 것이다.
+
+### 1-5. __afl_maybe_log — 실제 커버리지 기록
+
+trampoline이 호출하는 함수. CPU 플래그를 보존하면서 비트맵을 업데이트한다.
 
 ```asm
 __afl_maybe_log:
-  ; shared_mem[cur_location XOR prev_location]++
-  mov rdx, rcx               ; cur_location
-  xor rdx, [prev_location]   ; XOR prev_location
-  inc byte [shm_base + rdx]  ; 비트맵 카운터 증가
+  lahf              ; CPU FLAGS 하위 8비트 → AH 저장
+  seto %al          ; Overflow Flag → AL (lahf는 OF를 캡처 못함, 별도 처리)
 
-  ; prev_location = cur_location >> 1
-  shr rcx, 1
-  mov [prev_location], rcx
-  ret
+  movl  __afl_area_ptr, %edx
+  testl %edx, %edx
+  je    __afl_setup   ; 공유 메모리 미초기화 시 설정 루틴으로
+
+__afl_store:
+  movl __afl_prev_loc, %edi
+  xorl %ecx, %edi              ; edi = prev_loc XOR cur_loc (비트맵 인덱스)
+  shrl $1, %ecx                ; ★ cur_loc >> 1
+  movl %ecx, __afl_prev_loc    ; prev_loc = cur_loc >> 1 저장
+  incb (%edx, %edi, 1)         ; trace_bits[prev_loc XOR cur_loc]++
 ```
 
-### 2-4. 왜 어셈블러 단계인가?
+**`shrl $1`이 핵심이다.**
 
-컴파일러마다 어셈블리 출력 형식이 조금씩 다르지만, **어셈블리 파일(.s)은 텍스트 형식**이라 파싱이 상대적으로 쉽다. 또한 gcc, clang, 심지어 gcj(Java!) 등 어떤 컴파일러로 빌드하든 어셈블리를 거치기 때문에, afl-as 하나만 교체하면 **모든 컴파일러에 투명하게 계측**을 적용할 수 있다.
+시프트 없이 XOR만 쓰면 `A XOR B == B XOR A`라 A→B와 B→A 방향이 구분되지 않는다. `cur_loc`을 1비트 오른쪽으로 시프트한 뒤 `prev_loc`으로 저장하면 두 경로의 인덱스가 달라져 방향성이 보존된다. `A→A` 자기 루프도 `(A >> 1) XOR A != 0`으로 정상 처리된다.
 
 ---
 
-## 3. Coverage — 커버리지를 측정하는 방법
+## 2. Coverage — 커버리지 측정 방법
 
-### 3-1. 공유 메모리 비트맵 (Shared Memory Bitmap)
+**목표:** 어떤 엣지(A→B 전이)를 밟았는지, 몇 번 밟았는지를 64KB 공유 메모리로 추적한다.
 
-AFL의 커버리지 측정의 핵심은 **64KB 크기의 공유 메모리 배열**이다.
+### 2-1. 공유 메모리 비트맵
 
 ```c
 // config.h
 #define MAP_SIZE_POW2   16
-#define MAP_SIZE        (1 << MAP_SIZE_POW2)  // = 65536 = 64KB
+#define MAP_SIZE        (1 << MAP_SIZE_POW2)  // 65536 = 64KB
 ```
 
-이 배열은 `afl-fuzz`(퍼저 프로세스)와 타겟 바이너리(자식 프로세스)가 `shmget()` / `shmat()`으로 **공유**한다. 타겟이 실행되는 동안 계측 코드가 이 배열을 직접 업데이트하고, 실행이 끝나면 퍼저가 배열을 읽어 분석한다.
+퍼저(`afl-fuzz`)와 타겟 바이너리가 `shmget()` / `shmat()`으로 이 64KB 배열을 공유한다. 타겟 실행 중 계측 코드가 직접 업데이트하고, 실행이 끝나면 퍼저가 읽어서 분석한다.
 
-```
-[afl-fuzz 프로세스]          [타겟 바이너리 프로세스]
-      |                              |
-      |←── 공유 메모리 (64KB) ───→|
-      |                              |
-      |          실행 중에           |
-      |                    bitmap[A^B]++
-      |                    bitmap[B^C]++
-      |                    bitmap[C^D]++
-      |                              |
-      |← 실행 종료 후 bitmap 읽기 ←|
-```
-
-### 3-2. 엣지 ID 계산 — XOR 공식의 의미
-
-비트맵 인덱스를 계산하는 공식은 아래와 같다.
-
-```
-bitmap[cur_location XOR prev_location]++
-prev_location = cur_location >> 1
-```
-
-여기서 `cur_location`은 컴파일 타임에 각 기본 블록에 **랜덤하게 배정된 16비트 정수**다.
-
-**XOR을 쓰는 이유:** A→B 전이와 B→A 전이를 구별해야 하는데, 단순히 `A + B`나 `A * B`는 교환법칙이 성립해 구분이 불가능하다. XOR도 교환법칙이 성립하지만(`A^B == B^A`), `prev_location`을 `>> 1` 우측 시프트함으로써 방향성을 보존한다.
-
-**시프트(`>> 1`)를 쓰는 이유:** `A^A`(자기 자신으로 돌아오는 루프)가 `0`이 되는 문제를 방지한다. `A >> 1`은 A가 아닌 값이므로, `A ^ (A >> 1) ≠ 0`이 된다. 덕분에 타이트 루프(A→A→A...)와 일반 루프를 구별할 수 있다.
-
-**64KB(65536)가 적당한 이유:**
+**64KB가 적당한 이유:**
 
 | 분기 수 | 충돌 확률 | 대표 타겟 |
 |---------|-----------|-----------|
@@ -203,316 +179,526 @@ prev_location = cur_location >> 1
 
 대부분의 타겟(2k~10k 분기)에서 충돌률이 낮으면서, L2 캐시에 들어갈 만큼 작아 비교 연산이 마이크로초 단위로 빠르다.
 
-### 3-3. 히트 카운트 버킷 — 세밀한 상태 구분
-
-단순히 "이 엣지를 밟았는가/안 밟았는가"만 구분하면 정보가 너무 거칠다. AFL은 **히트 카운트를 버킷으로 분류**해 더 세밀하게 상태를 구분한다.
-
-```
-히트 카운트 버킷:
-1 | 2 | 3 | 4-7 | 8-15 | 16-31 | 32-127 | 128+
-```
-
-예를 들어 어떤 코드 블록이 평소에 1번 실행되다가 갑자기 4번 실행된다면 버킷이 `1 → 4-7`로 바뀐다. 이것은 "새로운 동작"으로 간주되어 큐에 추가된다. 반면 47번에서 48번으로 바뀌는 것은 같은 버킷(`32-127`)이므로 무시된다.
-
-이 방식 덕분에 루프를 2번 돌 때와 1번 돌 때를 구별할 수 있어, 오프-바이-원(off-by-one) 같은 미묘한 버그를 더 잘 찾아낸다.
-
-### 3-4. 새로운 동작 감지 로직
+### 2-2. has_new_bits() — 새 커버리지 감지
 
 ```c
-// afl-fuzz.c 중 — 새 커버리지 감지 (의사 코드)
-u8 has_new_bits(u8* virgin_map) {
-    u64* current = (u64*)trace_bits;   // 이번 실행 비트맵
-    u64* virgin   = (u64*)virgin_map;  // 지금까지 본 적 없는 엣지 맵
+// afl-fuzz.c
+static inline u8 has_new_bits(u8* virgin_map) {
 
-    u32 i = MAP_SIZE / 8;
-    u8  ret = 0;
+#ifdef WORD_SIZE_64
+    u64* current = (u64*)trace_bits;
+    u64* virgin  = (u64*)virgin_map;
+    u32  i = (MAP_SIZE >> 3);   // 65536 / 8 = 8192번 반복
+#else
+    u32* current = (u32*)trace_bits;
+    u32* virgin  = (u32*)virgin_map;
+    u32  i = (MAP_SIZE >> 2);
+#endif
+
+    u8 ret = 0;
 
     while (i--) {
-        // 이번 실행에서 밟은 엣지 중에 virgin에 없는 게 있으면
-        if (*current & *virgin) {
-            // virgin 맵 업데이트
-            *virgin &= ~*current;
-            ret = 1;
+        if (unlikely(*current) && unlikely(*current & *virgin)) {
+
+            if (likely(ret < 2)) {
+                u8* cur = (u8*)current;
+                u8* vir = (u8*)virgin;
+
+#ifdef WORD_SIZE_64
+                // vir[n] == 0xff → 한 번도 밟힌 적 없는 엣지
+                if ((cur[0] && vir[0] == 0xff) || (cur[1] && vir[1] == 0xff) ||
+                    (cur[2] && vir[2] == 0xff) || (cur[3] && vir[3] == 0xff) ||
+                    (cur[4] && vir[4] == 0xff) || (cur[5] && vir[5] == 0xff) ||
+                    (cur[6] && vir[6] == 0xff) || (cur[7] && vir[7] == 0xff))
+                    ret = 2;   // 진짜 새 경로
+                else
+                    ret = 1;   // 히트 카운트 버킷만 변화
+#endif
+            }
+
+            *virgin &= ~*current;  // 방문한 비트 제거 (다음 비교 최적화)
         }
         current++;
         virgin++;
     }
-    return ret;  // 1이면 "새 커버리지 발견"
+
+    if (ret && virgin_map == virgin_bits) bitmap_changed = 1;
+    return ret;
 }
 ```
 
-64KB를 8바이트(u64) 단위로 처리하기 때문에, 전체 비트맵 비교가 단 8192번의 AND 연산으로 끝난다. 이것이 AFL이 마이크로초 단위로 커버리지를 판단할 수 있는 이유다.
+| 반환값 | 의미 | 처리 |
+|--------|------|------|
+| `0` | 변화 없음 | 버림 |
+| `1` | 히트 카운트 버킷 변화 | 큐 추가 (낮은 우선순위) |
+| `2` | 한 번도 밟은 적 없는 새 엣지 | 큐 추가 (높은 우선순위) |
+
+- `unlikely()` 두 번 중첩: 대부분의 bitmap 슬롯이 0이라 브랜치 예측기에 힌트를 줘서 루프를 빠르게 돌린다.
+- `*virgin &= ~*current`: 방문한 비트를 미리 제거해 다음 비교를 최적화한다.
+
+### 2-3. 히트 카운트 버킷 — classify_counts()
+
+단순히 밟았는가/안 밟았는가만 구분하면 정보가 너무 거칠다. AFL은 히트 카운트를 8개 버킷으로 분류한다.
+
+```
+실제 카운트: 1 | 2 | 3 | 4~7 | 8~15 | 16~31 | 32~127 | 128+
+버킷값:      1 | 2 | 4 |  8  |  16  |  32   |   64   | 128
+```
+
+루프를 3번 도는 것과 7번 도는 것은 같은 버킷(4~7)이라 동일하게 취급한다. 3번 → 8번으로 바뀌면 버킷이 달라져 새로운 동작으로 감지한다. 오프-바이-원(off-by-one) 같은 미묘한 버그를 잡는 데 유효하다.
+
+### 2-4. calibrate_case() — 새 seed 검증
+
+새 seed를 큐에 추가하기 전에 반드시 거치는 검증 단계다.
+
+```c
+// afl-fuzz.c — calibrate_case()
+static u8 calibrate_case(char** argv, struct queue_entry* q,
+                         u8* use_mem, u32 handicap, u8 from_queue) {
+
+    stage_max = fast_cal ? 3 : CAL_CYCLES;  // 기본 8번 실행
+
+    for (stage_cur = 0; stage_cur < stage_max; stage_cur++) {
+
+        write_to_testcase(use_mem, q->len);
+        fault = run_target(argv, use_tmout);
+
+        // 첫 실행에서 bitmap이 비어 있으면 계측이 안 된 것
+        if (!dumb_mode && !stage_cur && !count_bytes(trace_bits)) {
+            fault = FAULT_NOINST;
+            goto abort_calibration;
+        }
+
+        cksum = hash32(trace_bits, MAP_SIZE, HASH_CONST);
+
+        if (q->exec_cksum != cksum) {
+            hnb = has_new_bits(virgin_bits);
+            if (hnb > new_bits) new_bits = hnb;
+
+            if (q->exec_cksum) {
+                // 같은 입력인데 trace가 달라짐 → flaky input 감지
+                for (i = 0; i < MAP_SIZE; i++) {
+                    if (!var_bytes[i] && first_trace[i] != trace_bits[i]) {
+                        var_bytes[i] = 1;
+                        stage_max = CAL_CYCLES_LONG;  // 8회 → 40회로 확장
+                    }
+                }
+                var_detected = 1;
+            } else {
+                q->exec_cksum = cksum;
+                memcpy(first_trace, trace_bits, MAP_SIZE);
+            }
+        }
+    }
+
+    q->exec_us     = (stop_us - start_us) / stage_max;
+    q->bitmap_size = count_bytes(trace_bits);
+    update_bitmap_score(q);
+}
+```
+
+같은 입력을 8번 실행해 trace가 달라지는 **flaky input**을 감지한다. flaky로 판정되면 40번으로 늘려 재관찰한다.
 
 ---
 
-## 4. Fork Server — 왜 빠른가
+## 3. Fork Server — exec() 오버헤드 제거
 
-### 4-1. 문제: exec() 오버헤드
+**목표:** `execv()` 초기화 비용을 제거해서 초당 실행 횟수를 극대화한다.
 
-퍼징은 초당 수천 번 타겟을 실행해야 한다. 매번 처음부터 `execve()`로 프로세스를 시작하면 다음 비용이 매번 발생한다.
+### 3-1. 문제
+
+매 테스트마다 `fork() + execv()`를 하면 다음 비용이 반복된다.
 
 ```
-execve() 호출마다 발생하는 비용:
-- 운영체제 프로세스 생성
-- 동적 라이브러리 로드 및 링크 (.so 파일들)
+execv() 호출마다:
+- 동적 라이브러리 로드 및 심볼 resolve
 - C 런타임 초기화 (libc, global constructors)
 - 프로그램 자체 초기화 코드
 ```
 
-큰 타겟(예: libxml, openssl 등)은 이 초기화만 수십 밀리초가 걸릴 수 있다. 초당 1000번 실행하려면 초기화를 1000번 해야 한다는 뜻이다.
+### 3-2. 해결 구조
 
-### 4-2. 해결: Fork Server
-
-AFL의 Fork Server는 이 문제를 `fork()`로 해결한다. `fork()`는 이미 실행 중인 프로세스를 복제하므로 초기화 비용이 들지 않는다.
+타겟을 딱 **1번만** `execv()`로 실행한 뒤, 초기화된 상태에서 `fork()`만 반복한다.
 
 ```
-[afl-fuzz]
-    │
-    │ (1) 타겟 최초 1회 실행
-    ▼
-[타겟 프로세스]
-    │
-    │ main() 진입 직전에 Fork Server 루프 진입
-    │
-    │◄──────── 파이프 ────────►[afl-fuzz]
-    │
-    │ 새 입력마다 fork()
-    │
-    ├── [자식 프로세스 1] → 입력 A 실행 → 종료
-    ├── [자식 프로세스 2] → 입력 B 실행 → 종료
-    └── [자식 프로세스 3] → 입력 C 실행 → 종료
+[afl-fuzz]                          [fork server (타겟 내부)]
+    │                                          │
+    │── write(fd 199, prev_timed_out) ────────▶│ "실행해"
+    │                                       fork()
+    │◀── read(fd 198, child_pid) ────────────  │ 자식 PID 전달
+    │                                  [자식: 실제 실행]
+    │◀── read(fd 198, status) ──────────────   │ 종료 상태 전달
+    │                                          │
+    │── write(fd 199, ...) ───────────────────▶│ 다음 실행 ...
 ```
 
-타겟 바이너리의 모든 초기화(라이브러리 로드, 전역 변수 초기화 등)는 **처음 딱 한 번만** 일어난다. 이후 각 테스트케이스마다 이미 초기화된 상태에서 `fork()`만 호출한다.
+`FORKSRV_FD = 198`, `FORKSRV_FD + 1 = 199`로 고정이다.
 
-### 4-3. Fork Server 구현 — 어디에 심어지나
-
-Fork Server 코드는 계측 시 `afl-as.h`에 의해 **타겟 바이너리 안에 직접 삽입**된다. 별도 프로세스가 아니다.
-
-실행 흐름은 아래와 같다.
-
-```
-타겟 바이너리 시작
-    ↓
-동적 링커 초기화 완료
-    ↓
-__afl_forkserver 함수 실행  ← afl-as.h가 삽입한 코드
-    ↓
-파이프를 통해 afl-fuzz에 "준비됐다" 신호 전송
-    ↓
-무한 루프 진입:
-    ├── afl-fuzz로부터 "실행하라" 신호 수신
-    ├── fork() 호출
-    │     ├── [부모] 자식 PID를 afl-fuzz에 전송, waitpid() 대기
-    │     └── [자식] Fork Server 루프 탈출 → main() 진입 → 실제 실행
-    └── 자식 종료 시 상태코드 afl-fuzz에 전송, 다음 신호 대기
-```
-
-### 4-4. afl-fuzz와 Fork Server 간 통신
-
-두 프로세스는 **파이프 2개**로 통신한다.
+### 3-3. init_forkserver() — 퍼저 측 초기화
 
 ```c
-// afl-fuzz.c 중 (의사 코드)
+// afl-fuzz.c — init_forkserver()
+EXP_ST void init_forkserver(char** argv) {
 
-// 파이프 설정
-int ctl_pipe[2];   // afl-fuzz → fork server (제어)
-int st_pipe[2];    // fork server → afl-fuzz (상태)
+    int st_pipe[2], ctl_pipe[2];
 
-// 실행 요청
-write(ctl_pipe[1], &dummy, 4);    // "실행해" 신호 전송
+    if (pipe(st_pipe) || pipe(ctl_pipe)) PFATAL("pipe() failed");
 
-// 자식 PID 수신
-read(st_pipe[0], &child_pid, 4);
+    forksrv_pid = fork();
 
-// 자식 종료 대기
-read(st_pipe[0], &status, 4);    // 종료 상태 수신
+    if (!forksrv_pid) {
+        /* ── 자식 프로세스 (fork server가 될 프로세스) ── */
+
+        // 파이프 재연결: ctl_pipe[0] → fd 198, st_pipe[1] → fd 199
+        if (dup2(ctl_pipe[0], FORKSRV_FD) < 0)     PFATAL("dup2() failed");
+        if (dup2(st_pipe[1],  FORKSRV_FD + 1) < 0) PFATAL("dup2() failed");
+
+        // 심볼을 fork 전에 전부 resolve
+        if (!getenv("LD_BIND_LAZY")) setenv("LD_BIND_NOW", "1", 0);
+
+        setenv("ASAN_OPTIONS", "abort_on_error=1:detect_leaks=0:"
+                               "symbolize=0:allocator_may_return_null=1", 0);
+
+        execv(target_path, argv);  // 딱 1번
+    }
+
+    /* ── 부모 프로세스 (fuzzer) ── */
+    close(ctl_pipe[0]); close(st_pipe[1]);
+    fsrv_ctl_fd = ctl_pipe[1];
+    fsrv_st_fd  = st_pipe[0];
+
+    // 핸드셰이크: fork server 준비되면 4바이트 수신
+    rlen = read(fsrv_st_fd, &status, 4);
+    if (rlen == 4) { OKF("All right - fork server is up."); return; }
+}
 ```
 
-파이프 메시지는 4바이트 정수 하나가 전부다. 오버헤드가 극히 작다.
+`LD_BIND_NOW=1`을 세팅하는 이유: 동적 라이브러리 심볼을 `fork()` **전에** 전부 resolve해두기 위해서다. 이후 fork된 자식들은 이미 resolve된 상태를 그대로 복사하므로 lazy binding 오버헤드가 없다.
 
-### 4-5. 성능 효과
+### 3-4. __afl_forkserver — 타겟 내부 루프
 
-공식 문서에 따르면 Fork Server 방식은 단순 exec() 방식 대비 **수배~수십 배 빠르다.** 특히 초기화 비용이 큰 타겟일수록 효과가 크다.
+Fork Server 코드는 `afl-as.h`에 의해 **타겟 바이너리 안에 직접 삽입**된다.
+
+```asm
+__afl_forkserver:
+  pushl %eax / pushl %ecx / pushl %edx
+
+  ; 준비 완료 신호 → fuzzer에게 4바이트 write
+  pushl $4 / pushl $__afl_temp / pushl $FORKSRV_FD+1
+  call  write
+  addl  $12, %esp
+  cmpl  $4, %eax
+  jne   __afl_fork_resume   ; ★ write 실패 → 단독 실행 모드 폴백
+
+__afl_fork_wait_loop:
+  ; fuzzer로부터 "실행해" 신호 대기
+  pushl $4 / pushl $__afl_temp / pushl $FORKSRV_FD
+  call  read
+  addl  $12, %esp
+  cmpl  $4, %eax
+  jne   __afl_die
+
+  call fork
+
+  cmpl $0, %eax
+  jl   __afl_die
+  je   __afl_fork_resume    ; 자식: 실제 실행으로
+
+  ; 부모: 자식 PID 전송 후 종료 대기
+  movl  %eax, __afl_fork_pid
+  pushl $4 / pushl $__afl_fork_pid / pushl $FORKSRV_FD+1
+  call  write / addl $12, %esp
+
+  pushl $0 / pushl $__afl_temp / pushl __afl_fork_pid
+  call  waitpid / addl $12, %esp
+
+  pushl $4 / pushl $__afl_temp / pushl $FORKSRV_FD+1
+  call  write / addl $12, %esp
+  jmp __afl_fork_wait_loop
+
+__afl_fork_resume:
+  ; 자식: fd 198, 199 닫고 실제 실행
+  pushl $FORKSRV_FD   / call close
+  pushl $FORKSRV_FD+1 / call close
+  addl  $8, %esp
+  popl %edx / popl %ecx / popl %eax
+  jmp  __afl_store
+```
+
+**폴백 동작:** `write` 실패 시 `__afl_fork_resume`으로 점프한다. 계측된 바이너리를 afl-fuzz 없이 단독 실행해도 정상 동작하는 이유가 이것이다.
+
+### 3-5. run_target() — 매 테스트마다 일어나는 일
+
+```c
+// afl-fuzz.c — run_target()
+static u8 run_target(char** argv, u32 timeout) {
+
+    memset(trace_bits, 0, MAP_SIZE);  // 실행 전 bitmap 초기화
+    MEM_BARRIER();                    // 컴파일러 재배치 방지
+
+    // fork server에 4바이트 write → "실행해" 신호
+    if ((res = write(fsrv_ctl_fd, &prev_timed_out, 4)) != 4)
+        RPFATAL(res, "Unable to request new process from fork server (OOM?)");
+
+    // 자식 PID 수신
+    if ((res = read(fsrv_st_fd, &child_pid, 4)) != 4)
+        RPFATAL(res, "Unable to request new process from fork server (OOM?)");
+
+    // SIGALRM으로 타임아웃 설정
+    it.it_value.tv_sec  = (timeout / 1000);
+    it.it_value.tv_usec = (timeout % 1000) * 1000;
+    setitimer(ITIMER_REAL, &it, NULL);
+
+    // 자식 종료 상태 수신
+    read(fsrv_st_fd, &status, 4);
+
+    MEM_BARRIER();
+    classify_counts((u64*)trace_bits);  // 히트 카운트 → 버킷 변환
+
+    if (WIFSIGNALED(status)) {
+        kill_signal = WTERMSIG(status);
+        if (child_timed_out && kill_signal == SIGKILL) return FAULT_TMOUT;
+        return FAULT_CRASH;
+    }
+    return FAULT_NONE;
+}
+```
+
+`prev_timed_out`을 신호로 보내는 이유: fork server가 이전 실행이 타임아웃으로 kill됐는지 알아야 하기 때문이다.
 
 ---
 
-## 5. Mutation — 입력을 어떻게 변이시키나
+## 4. Mutation — 입력 변이 전략
 
-AFL의 변이 전략은 두 단계로 나뉜다: 결정론적(Deterministic)과 비결정론적(Non-deterministic). 각 seed는 이 단계들을 순서대로 거친다.
+**목표:** 기존 seed를 변이시켜 새로운 경로를 탐색하는 입력을 만든다.
 
-### 5-1. 결정론적 단계 (Deterministic Stages)
+**실행 순서:** Deterministic(결정론적) → Havoc(비결정론적) → Splice(접합)
 
-처음 seed를 처리할 때 **한 번씩 체계적으로** 실행된다. 재현 가능하고, 모든 위치를 빠짐없이 건드린다.
+### 4-1. Deterministic 단계
 
-#### Bitflip — 비트 단위 뒤집기
+처음 seed를 처리할 때 한 번씩 체계적으로 실행된다. 재현 가능하고, 모든 위치를 빠짐없이 건드린다.
 
-```
-원본:    01000001 01000010  (= "AB")
-
-1비트씩: 11000001 01000010  (1비트 뒤집기)
-         00000001 01000010
-         ...
-
-2비트씩: 11100001 01000010
-         ...
-```
-
-1비트, 2비트, 4비트 단위로 슬라이딩하며 뒤집는다. 이 단계에서 AFL은 부수 효과로 **토큰을 자동 추출**한다. 특정 비트를 뒤집었을 때 커버리지가 크게 변하면, 그 위치가 "의미 있는 바이트"임을 알 수 있고, 이를 딕셔너리 토큰으로 기록한다.
-
-#### Arithmetic — 정수 연산
-
-각 바이트/워드/더블워드에 작은 정수를 더하거나 뺀다(`-35 ~ +35` 범위).
-
-```
-원본:  41 42 43 44
-
-+1:    42 42 43 44
--1:    40 42 43 44
-+35:   64 42 43 44
-```
-
-빅엔디안/리틀엔디안 양쪽 모두 시도한다. 정수 파서의 오버플로 버그를 노린다.
-
-#### Interesting Values — 경계값 삽입
-
-프로그래머가 자주 실수하는 **경계값들**을 직접 삽입한다.
+#### FLIP_BIT 매크로
 
 ```c
-// afl-fuzz.c의 interesting values 정의
+// afl-fuzz.c
+#define FLIP_BIT(_ar, _b) do { \
+    u8* _arf = (u8*)(_ar); \
+    u32 _bf = (_b); \
+    _arf[(_bf) >> 3] ^= (128 >> ((_bf) & 7)); \
+  } while (0)
+```
+
+`_b >> 3`으로 바이트 위치, `_b & 7`로 비트 위치를 계산한다. bitflip stage와 havoc stage 모두에서 사용된다.
+
+#### Interesting Values
+
+```c
+// config.h
 static s8  interesting_8[]  = { -128, -1, 0, 1, 16, 32, 64, 100, 127 };
 static s16 interesting_16[] = { -32768, -129, 128, 255, 256, 512,
                                   1000, 1024, 4096, 32767 };
 static s32 interesting_32[] = { -2147483648LL, -100663046, -32769,
-                                  32768, 65535, 65536, 100663045,
-                                  2147483647 };
+                                  32768, 65535, 65536,
+                                  100663045, 2147483647 };
 ```
 
-`INT_MAX`, `UINT_MAX`, `0`, `-1` 같은 값들은 버퍼 크기 계산에서 오버플로를 자주 유발한다.
+`-100663046`처럼 이상해 보이는 값은 특정 해시/체크섬 함수에서 취약한 동작을 유발하는 비트 패턴이다.
 
-#### Dictionary / Token Insertion — 사전 삽입
+#### 중복 스킵 로직 — could_be_arith()
 
-`-x` 옵션으로 제공된 사전(예: HTML 태그, SQL 키워드, PNG 매직 바이트)을 입력 곳곳에 삽입하거나 교체한다.
-
-```
-사전: ["<script>", "SELECT", "PNG\x89"]
-
-원본:  41 42 43 44
-→      3C 73 63 72 69 70 74 3E 43 44  (앞에 "<script>" 삽입)
-```
-
-### 5-2. 비결정론적 단계 — Havoc
-
-결정론적 단계가 끝나면 **Havoc** 단계로 진입한다. Havoc는 위의 변이들을 **무작위 순서로, 무작위 횟수로 조합**해서 적용한다.
-
-```
-Havoc 예시 (한 라운드):
-원본: 41 42 43 44 45 46
-
-1. 3번째 바이트에 interesting value 삽입 → 41 42 FF 44 45 46
-2. 1-4번 바이트 삭제                     → 45 46
-3. 앞에 랜덤 블록 삽입                   → 00 00 45 46
-4. 첫 바이트 bitflip                     → FF 00 45 46
-```
-
-실제로 Havoc 단계에서 대부분의 버그가 발견된다. 결정론적 단계가 "체계적으로 모든 경우를 탐색"하는 준비 과정이라면, Havoc는 "예상치 못한 조합"을 만들어내는 창의적 단계다.
-
-### 5-3. Splicing — 두 입력의 결합
-
-큐에 여러 개의 seed가 쌓이면 AFL은 **두 입력을 이어붙이는** Splicing 단계를 수행한다.
-
-```
-seed A:  41 42 43 44 | 45 46 47 48
-seed B:  61 62 63 64 | 65 66 67 68
-
-Splicing (중간 지점에서 결합):
-결과:    41 42 43 44 | 65 66 67 68
-```
-
-서로 다른 코드 경로를 탐색했던 두 입력을 합치면, 두 경로를 모두 탐색할 수 있는 입력이 탄생할 수 있다.
-
-### 5-4. 큐 선택 — 어떤 seed를 먼저 변이하나
-
-AFL은 모든 seed를 동등하게 처리하지 않는다. **성능 점수(performance score)** 를 계산해 각 seed에 변이 횟수를 차등 배분한다.
+deterministic 단계에서 동일한 결과를 내는 변이는 자동으로 건너뛴다.
 
 ```c
-// afl-fuzz.c 중 — 성능 점수 계산 (의사 코드)
-u32 calculate_score(struct queue_entry* q) {
+// afl-fuzz.c — could_be_arith()
+static u8 could_be_arith(u32 old_val, u32 new_val, u8 blen) {
+    u32 i, ov = 0, nv = 0, diffs = 0;
+    if (old_val == new_val) return 1;
 
-    u32 perf_score = 100;  // 기본 점수
+    for (i = 0; i < blen; i++) {
+        u8 a = old_val >> (8 * i),
+           b = new_val >> (8 * i);
+        if (a != b) { diffs++; ov = a; nv = b; }
+    }
 
-    // 실행 속도가 평균보다 빠르면 점수 높이기
-    if (q->exec_us * 0.1 > avg_exec_us) perf_score = 10;
-    else if (q->exec_us * 2 < avg_exec_us) perf_score = 300;
-    else if (q->exec_us * 3 < avg_exec_us) perf_score = 200;
-    else if (q->exec_us * 4 < avg_exec_us) perf_score = 150;
+    // 1바이트만 바뀌었고 차이가 ARITH_MAX(35) 이내면 중복
+    if (diffs == 1) {
+        if ((u8)(ov - nv) <= ARITH_MAX ||
+            (u8)(nv - ov) <= ARITH_MAX) return 1;
+    }
+    return 0;
+}
+```
 
-    // 파일 크기가 작으면 점수 높이기
-    if (q->len * 4 < avg_len) perf_score = 300;
-    else if (q->len * 2 < avg_len) perf_score = 200;
+`could_be_bitflip()`, `could_be_interest()`도 동일한 방식으로 중복을 제거한다.
+
+### 4-2. Havoc 단계 — 랜덤 조합
+
+결정론적 단계가 끝나면 **Havoc**로 진입한다. 위의 변이들을 무작위 순서로, 무작위 횟수로 중첩 적용한다.
+
+```c
+// afl-fuzz.c — fuzz_one() 내 havoc 루프
+// 딕셔너리(extras)가 있으면 17가지, 없으면 15가지 중 랜덤 선택
+switch (UR(15 + ((extras_cnt + a_extras_cnt) ? 2 : 0))) {
+
+    case 0:  FLIP_BIT(out_buf, UR(temp_len << 3)); break;        // 랜덤 비트 뒤집기
+    case 1:  out_buf[UR(temp_len)] =
+               interesting_8[UR(sizeof(interesting_8))]; break;  // interesting_8 삽입
+    case 2:  /* interesting_16 삽입 (LE/BE 랜덤) */
+    case 3:  /* interesting_32 삽입 (LE/BE 랜덤) */
+    case 4:  out_buf[UR(temp_len)] -= 1 + UR(ARITH_MAX); break;  // 빼기
+    case 5:  out_buf[UR(temp_len)] += 1 + UR(ARITH_MAX); break;  // 더하기
+    case 8:  out_buf[UR(temp_len)] = UR(256); break;             // 완전 랜덤 바이트
+    case 12: /* 랜덤 블록 삭제 */
+    case 13: /* 랜덤 블록 복제 삽입 */
+    case 14: /* 딕셔너리 extras로 덮어쓰기 (extras 있을 때만) */
+    case 15: /* 딕셔너리 extras 삽입         (extras 있을 때만) */
+}
+```
+
+#### 블록 크기 결정 — choose_block_len()
+
+```c
+// afl-fuzz.c — choose_block_len()
+static u32 choose_block_len(u32 limit) {
+    u32 min_value, max_value;
+    u32 rlim = MIN(queue_cycle, 3);
+
+    if (!run_over10m) rlim = 1;  // 초반 10분: 작은 블록(최대 32바이트)만
+
+    switch (UR(rlim)) {
+        case 0:  min_value = 1;
+                 max_value = HAVOC_BLK_SMALL;    // 32
+                 break;
+        case 1:  min_value = HAVOC_BLK_SMALL;    // 32
+                 max_value = HAVOC_BLK_MEDIUM;   // 128
+                 break;
+        default:
+                 if (UR(10)) {
+                     min_value = HAVOC_BLK_MEDIUM;  // 128
+                     max_value = HAVOC_BLK_LARGE;   // 1500
+                 } else {
+                     min_value = HAVOC_BLK_LARGE;   // 1500
+                     max_value = HAVOC_BLK_XL;      // 32768
+                 }
+    }
+    return min_value + UR(MIN(max_value, limit) - min_value + 1);
+}
+```
+
+큐 사이클이 쌓일수록 더 큰 블록을 다룰 확률이 높아진다. 초반에는 작은 변이로 빠르게 커버리지를 넓히고, 이후 큰 변이로 깊이 탐색한다.
+
+### 4-3. Seed 우선순위 — calculate_score()
+
+모든 seed가 동등하게 처리되지 않는다. 점수가 havoc의 `stage_max`(반복 횟수)로 직결된다.
+
+```c
+// afl-fuzz.c — calculate_score()
+static u32 calculate_score(struct queue_entry* q) {
+
+    u32 perf_score = 100;
+
+    // 실행 속도 기반
+    if      (q->exec_us * 0.1  > avg_exec_us) perf_score = 10;
+    else if (q->exec_us * 4    < avg_exec_us) perf_score = 300;
+    else if (q->exec_us * 3    < avg_exec_us) perf_score = 200;
+    else if (q->exec_us * 2    < avg_exec_us) perf_score = 150;
+
+    // 비트맵 크기 기반 (커버리지가 넓을수록 우대)
+    if      (q->bitmap_size * 0.3  > avg_bitmap_size) perf_score *= 3;
+    else if (q->bitmap_size * 3    < avg_bitmap_size) perf_score *= 0.25;
+
+    // 핸디캡 보정 (나중에 발견된 seed에 유리)
+    if (q->handicap >= 4) { perf_score *= 4; q->handicap -= 4; }
+    else if (q->handicap)  { perf_score *= 2; q->handicap--;    }
+
+    // 큐 깊이 기반 (변이를 거쳐 만들어진 seed일수록 우대)
+    switch (q->depth) {
+        case 0 ... 3:   break;
+        case 4 ... 7:   perf_score *= 2; break;
+        case 8 ... 13:  perf_score *= 3; break;
+        case 14 ... 25: perf_score *= 4; break;
+        default:        perf_score *= 5;
+    }
+
+    if (perf_score > HAVOC_MAX_MULT * 100)
+        perf_score = HAVOC_MAX_MULT * 100;
 
     return perf_score;
 }
 ```
 
-점수가 높은 seed는 Havoc 단계에서 더 많은 변이 횟수를 할당받는다. **빠르고 작은 seed가 더 많이 변이된다** — 직관적으로도 합리적인 전략이다.
+**빠르고, 커버리지가 넓고, 깊이 있는 seed일수록 더 많이 변이된다.**
 
 ---
 
-## 6. 전체 흐름 종합
-
-지금까지 분석한 4개의 메커니즘이 실제로 어떻게 맞물려 돌아가는지 종합 흐름도로 정리한다.
+## 5. 전체 흐름 종합
 
 ```
-━━━━━━━━━━━━━━━━━━━━ 컴파일 타임 ━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━ 컴파일 타임 ━━━━━━━━━━━━━━━━━━━━━━
 
 소스코드
-    └→ [afl-gcc] (wrapper)
-           └→ gcc로 .s 파일 생성
-           └→ [afl-as] (계측 어셈블러)
-                  └→ 각 기본 블록 앞에 __afl_maybe_log() 삽입
-                  └→ Fork Server 코드 삽입 (main() 직전)
-                  └→ 계측된 바이너리 생성
+  └→ [afl-gcc]  (-B as_path, -no-integrated-as)
+       └→ gcc로 .s 파일 생성
+       └→ [afl-as]  add_instrumentation()
+              └→ 각 기본 블록 앞: trampoline 삽입
+                   leaq -(152)(rsp) → movq rcx, $블록ID → call __afl_maybe_log
+                     └→ lahf + seto → XOR → shrl $1 → incb trace_bits[prev^cur]
 
-━━━━━━━━━━━━━━━━━━━━ 실행 타임 ━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━ 실행 타임 ━━━━━━━━━━━━━━━━━━━━━━━━
 
 [afl-fuzz 시작]
-    │
-    ├─ 공유 메모리(64KB bitmap) 생성
-    ├─ 파이프 2개 생성 (ctl_pipe, st_pipe)
-    ├─ 타겟 바이너리 최초 실행 → Fork Server 활성화
-    │
-    └─ 메인 퍼징 루프:
-          │
-          ├─ 1. 큐에서 seed 선택 (성능 점수 기반)
-          ├─ 2. 변이 (결정론적 → Havoc → Splicing)
-          ├─ 3. Fork Server에 실행 요청
-          ├─ 4. fork() → 자식이 변이 입력으로 타겟 실행
-          │       └─ 계측 코드가 bitmap[cur ^ prev]++ 업데이트
-          ├─ 5. 자식 종료 → 상태 수신
-          ├─ 6. 커버리지 분석
-          │       ├─ 새 엣지 or 새 히트 버킷? → 큐에 추가 ✓
-          │       ├─ 크래시? → crashes/ 에 저장
-          │       └─ 변화 없음? → 버림
-          └─ 7. 1번으로 돌아감
+  └→ shmget() / shmat()  : 64KB 공유 메모리 생성
+  └→ init_forkserver()   : 파이프 2개 생성, 타겟 최초 1회 execv()
+       └→ LD_BIND_NOW=1  : 심볼 사전 resolve
+       └→ fork server 루프 대기
+
+메인 퍼징 루프 — fuzz_one():
+  │
+  ├─ 1. calculate_score(q) → perf_score → stage_max 결정
+  │       실행속도 / 비트맵 크기 / 핸디캡 / 큐 깊이 반영
+  │
+  ├─ 2. Deterministic 변이
+  │       bitflip → arithmetic(±35) → interesting values → extras
+  │       could_be_*() 함수로 중복 결과 자동 스킵
+  │
+  ├─ 3. Havoc: switch(UR(15 or 17)) × stage_max 회
+  │       choose_block_len()으로 블록 크기 동적 결정
+  │
+  ├─ 4. run_target() 호출
+  │       write(fsrv_ctl_fd, 4) → fork()
+  │       자식: __afl_fork_resume → trace_bits 업데이트
+  │       classify_counts(trace_bits) → 히트 카운트 버킷 변환
+  │
+  ├─ 5. has_new_bits(virgin_bits) 분석
+  │       ret 0 → 버림
+  │       ret 1 → 큐 추가 (히트 버킷 변화)
+  │       ret 2 → calibrate_case() → 큐 추가 (새 엣지)
+  │                └→ 8회 실행, flaky 감지 시 40회로 확장
+  │
+  └─ 6. Splice: 다른 seed와 합치기 후 Havoc 재적용
 ```
 
-### 4개 메커니즘 요약표
+### 실제 코드에서 확인한 핵심 포인트
 
-| 메커니즘 | 관련 파일 | 핵심 역할 |
-|----------|-----------|-----------|
-| **Instrumentation** | `afl-gcc.c`, `afl-as.c`, `afl-as.h` | 어셈블러 단계에서 기본 블록마다 `bitmap[A^B]++` 삽입 |
-| **Coverage** | `afl-fuzz.c` (`has_new_bits`) | 64KB SHM 비트맵으로 엣지 커버리지 + 히트 버킷 추적 |
-| **Fork Server** | `afl-as.h` (삽입), `afl-fuzz.c` (제어) | 파이프 기반 부모-자식 통신으로 exec() 오버헤드 제거 |
-| **Mutation** | `afl-fuzz.c` | 결정론적 단계 → Havoc → Splicing 순서로 진행 |
+| 항목 | 실제 코드 |
+|------|-----------|
+| `prev_loc` 저장 | `cur_loc` 그대로가 아니라 **`cur_loc >> 1`** (`shrl $1`) |
+| 플래그 보존 | `lahf`만이 아니라 **`lahf` + `seto %al`** (Overflow Flag 별도 처리) |
+| fork server 폴백 | write 실패 시 **`__afl_fork_resume`으로 자동 폴백** → 단독 실행 가능 |
+| 중복 스킵 | `could_be_bitflip/arith/interest()`로 동일 결과 변이 **자동 생략** |
+| havoc case 수 | 항상 15개가 아니라 **딕셔너리 유무에 따라 15 또는 17개** |
+| 블록 크기 | 고정이 아니라 **큐 사이클 + 10분 기준으로 동적 결정** |
+| flaky input | calibrate_case()에서 8번 → **40번으로 자동 확장** 후 재관찰 |
 
 ---
 
 ## 참고 자료
 
 - [google/AFL — GitHub](https://github.com/google/AFL)
-- [AFL technical_details.txt](https://github.com/google/AFL/blob/master/docs/technical_details.txt)
-- [AFL afl-gcc.c](https://github.com/google/AFL/blob/master/afl-gcc.c)
-- [AFL afl-as.c](https://github.com/google/AFL/blob/master/afl-as.c)
-- [AFL afl-fuzz.c](https://github.com/google/AFL/blob/master/afl-fuzz.c)
-- [AFL afl-as.h](https://github.com/google/AFL/blob/master/afl-as.h)
+- [afl-fuzz.c](https://github.com/google/AFL/blob/master/afl-fuzz.c) — has_new_bits, run_target, init_forkserver, fuzz_one
+- [afl-as.h](https://github.com/google/AFL/blob/master/afl-as.h) — trampoline, __afl_maybe_log, __afl_forkserver
+- [afl-as.c](https://github.com/google/AFL/blob/master/afl-as.c) — add_instrumentation
+- [afl-gcc.c](https://github.com/google/AFL/blob/master/afl-gcc.c) — edit_params, find_as
+- [config.h](https://github.com/google/AFL/blob/master/config.h) — MAP_SIZE, ARITH_MAX, interesting values, FORKSRV_FD
+- [technical_details.txt](https://github.com/google/AFL/blob/master/docs/technical_details.txt) — 작성자 Michal Zalewski의 공식 내부 문서
