@@ -59,3 +59,5 @@ exclude: ["sitemap.xml", "feed.xml", "LICENSE", "README.md", "Gemfile", "Gemfile
 kramdown:
   math_engine: null
   syntax_highlighter: rouge
+
+future: true
