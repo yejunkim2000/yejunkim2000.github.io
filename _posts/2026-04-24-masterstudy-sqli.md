@@ -22,7 +22,6 @@ tags: [BugBounty, SQLi, WordPress, Patchstack, CVE, LMS]
 | **엔드포인트** | `POST /wp-json/lms/stm-lms/order/items` |
 | **필요 권한** | Subscriber+ (일반 로그인 사용자) |
 | **CVSS** | 6.5 (Medium) — AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N |
-| **추가 발견** | IDOR — 타 사용자 학습 통계 무단 열람 (CVSS 4.3) |
 
 ---
 
@@ -199,19 +198,7 @@ OR
 
 ---
 
-## 6. 추가 발견 — IDOR
-
-같은 분석 세션에서 IDOR(Insecure Direct Object Reference)도 추가로 발견했다.
-
-```
-GET /wp-json/masterstudy-lms/v2/student/stats/{student_id}
-```
-
-`student_id`를 임의의 값으로 바꾸면 타 사용자의 학습 통계를 무단으로 열람할 수 있다. CVSS 4.3 (Medium).
-
----
-
-## 7. 제출 및 느낀 점
+## 6. 제출 및 느낀 점
 
 - **플랫폼:** Patchstack Bug Bounty
 - **제출일:** 2026-04-24
