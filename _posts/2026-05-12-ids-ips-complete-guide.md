@@ -876,7 +876,6 @@ IDS와 IPS는 서로 대체 관계가 아니라 **상호 보완 관계**이다.
 
 ## 참고 자료
 
-- [Karsel's Blog - IDS/IPS 원리와 활용 방법](https://karsel83.github.io/posts/IDS/)
 - [Snort 공식 문서](https://www.snort.org/documents)
 - [Suricata 공식 문서](https://docs.suricata.io)
 - [Zeek 공식 문서](https://docs.zeek.org)
