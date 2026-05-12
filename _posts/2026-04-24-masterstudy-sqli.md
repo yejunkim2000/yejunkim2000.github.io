@@ -7,7 +7,6 @@ author: yejunkim2000
 tags: [BugBounty, SQLi, WordPress, Patchstack, CVE, LMS]
 ---
 
-
 > **플러그인:** masterstudy-lms-learning-management-system v3.7.28
 > **플랫폼:** Patchstack Bug Bounty
 > **발견일:** 2026-04-24
