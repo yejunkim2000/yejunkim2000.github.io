@@ -8,9 +8,6 @@ tags: [Network, pcap, Python, Ethernet, IP, TCP, UDP, ICMP, 패킷분석]
 excerpt: "scapy/dpkt 없이 순수 Python으로 pcap 파일을 바이트 단위로 파싱하여 Ethernet/IP/TCP/UDP/ICMP 헤더와 프로토콜별 통계를 분석하고, 트래픽이 들려주는 이야기를 해석한다."
 ---
 
-> **카테고리:** 개발 · **난이도:** ★★☆☆☆ · **예상 기간:** 14일
-
----
 
 ## 미션 목표
 
@@ -216,7 +213,7 @@ python pcap_analyzer.py mycapture.pcap --limit 30
 
 > 심화: 같은 주제를 C/libpcap로 다시 구현하여 TCP 트래픽의 HTTP 메시지까지 추출하는 버전도 별도로 작성했다.
 
-> ⚠️ 패킷 캡처는 반드시 **본인 소유 네트워크 또는 허가된 환경**에서만. 타인 트래픽 무단 감청은 불법이다.
+> 패킷 캡처는 반드시 **본인 소유 네트워크 또는 허가된 환경**에서만. 타인 트래픽 무단 감청은 불법이다.
 
 ## 참고 자료
 
