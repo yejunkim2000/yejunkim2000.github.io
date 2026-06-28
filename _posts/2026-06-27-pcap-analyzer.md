@@ -143,7 +143,8 @@ UDP(8B)는 포트와 길이를, ICMP(4B+)는 type/code를 뽑는다.
 
 실제 캡처 없이 **ARP·DNS·ICMP·TCP·HTTPS·NTP 패킷을 손으로 조립한** `sample.pcap`을 만들고 분석했다.
 
-![pcap 분석기 실행 결과 — 터미널 출력](/assets/images/pcap-run.png)
+<img width="926" height="1078" alt="pcap-run" src="https://github.com/user-attachments/assets/316cc08a-86a7-4ca5-bacd-decf4f670546" />
+
 *▲ `pcap_analyzer.py`를 `sample.pcap`에 직접 실행한 결과 화면*
 
 요약 통계(아래)는 미션의 "패킷 개수 + 프로토콜별 통계"를 그대로 만족한다.
